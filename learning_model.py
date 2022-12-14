@@ -1,68 +1,57 @@
 import random
 import json
 import os
-from config import PROGRESSION_FILE, IMAGES_MAPPING_FILE
+import csv
+from config import PROGRESSION_FILE, IMAGES_MAPPING_FILE, VISUAL_PART, STAKE_PART
 
-class MarkedAlias():
-    def __init__(self, content, key, attached_unit, active = False):
-        self.content = content
-        self.content_type = "text"
-        self.active = active
-        self.correct = False
-        self.wrong = False
-        self.attached_unit = attached_unit
-        self.key = key
+knwon_prices = {}
 
-    def activate(self):
-        self.active = True
+class simpleCandle():
+    def __init__(self, o, c, h, l, v, index = 0):
+        self.o = o
+        self.c = c
+        self.h = h
+        self.l = l
+        self.v = v
+        self.green = self.c >= self.o
+        self.red = self.c < self.o
+        self.long_entry = False
+        self.short_entry = False
+        self.exit = False
+        self.entry_level = 0
+        self.exit_level = 0
+        self.last = False
+        self.vRising = False
+        self.index = index
+        self.best_entry = False
+        self.best_exit = False
+        self.initial = False
 
-    def deactivate(self):
-        self.active = False
+    def ochl(self):
+        return self.o, self.c, self.h, self.l
 
-    def register_match(self):
-        self.attached_unit.deactivate(positive_feedback = True)
+def extract_ochlv(filepath):
+    O, C, H, L, V = [], [], [], [], []
+    with open(filepath, "r") as ochlfile:
+        reader = csv.reader(ochlfile)
+        for line in reader:
+            O.append(float(line[0])*100)
+            C.append(float(line[1])*100)
+            H.append(float(line[2])*100)
+            L.append(float(line[3])*100)
+            V.append(float(line[4])*100)
 
-    def register_error(self):
-        self.attached_unit.deactivate(positive_feedback = False)
+    return O,C,H,L,V
 
-class SemanticUnit():
-    def __init__(self, aliases):
-        self.aliases = aliases
-        self.activated = False
-        self.learning_score = 100 
-        self.key = id(self)
+def fetch_prices(asset_name):
+    global knwon_prices
+    O, C, H, L, V = extract_ochlv(asset_name)
+    knwon_prices[asset_name] = [simpleCandle(o,c,h,l,v,i) for i, (o,c,h,l,v) in enumerate(zip(O,C,H,L,V))]
 
-    def __increment(self):
-        self.learning_score += 1
-            
-
-    def __decrement(self):
-        self.learning_score -= 1 
-        if self.learning_score <= 98:
-            self.learning_score = 98
-
-    def activate(self):
-        self.activated = True
-
-    def produce_pair(self):
-        if not self.activated:
-            return [MarkedAlias(_, self.key, self) for _ in random.sample(self.aliases, 2)]
-        else:
-            selected = [MarkedAlias(_, self.key, self) for _ in random.sample(self.aliases, 2)]
-            active = random.choice(selected)
-            active.activate()
-            
-            return selected
-
-    def deactivate(self, positive_feedback = False):
-        if self.activated:
-
-            if positive_feedback:
-                self.__increment()
-            else:
-                self.__decrement()
-
-        self.activated = False
+def get_candles(asset_name, index):
+    if asset_name not in knwon_prices:
+        fetch_prices(asset_name)
+    return knwon_prices[asset_name][int(index):int(index)+VISUAL_PART+STAKE_PART] 
 
 class ChainUnitType():
     type_key = "type_key"
@@ -101,23 +90,19 @@ class ChainUnit():
         self.extra = extra
 
 class ChainedFeature():
-    def __init__(self, entity, in_key, out_key, main_feature, key_feature_pairs): 
-        self.entity = entity
-        self.in_key = in_key.upper()
-        self.out_key = out_key.upper()
-        self.main_feature = main_feature
-        self.keys = [_.upper() for _ in key_feature_pairs[0::2]]
-        self.features = key_feature_pairs[1::2]
+    def __init__(self, source, start_point): 
+
+        self.source = source
+        self.start_point = start_point
+        self.candles = get_candles(self.source, self.start_point)
+
         self.progression_level = 0
         self.decreased = False
         self.rised = False
         self.attached_image = "" 
-        self.basic_timing_per_level = {0:35,
-                                       1:35,
-                                       2:35}
-                                       # 3:30,
-                                       # 4:30,
-                                       # 5:30}
+        self.basic_timing_per_level = {0:30,
+                                       1:30,
+                                       2:30}
 
     def set_mode(self, unit_type):
         if self.progression_level == 0:
@@ -126,16 +111,6 @@ class ChainedFeature():
             return ChainUnitType.mode_question
         else:
             return ChainUnitType.mode_open
-        # elif self.progression_level == 1 and unit_type == ChainUnitType.type_key:
-        #     return ChainUnitType.mode_question 
-        # elif self.progression_level == 2 and unit_type == ChainUnitType.type_feature:
-        #     return ChainUnitType.mode_question
-        # elif self.progression_level >= 3 and unit_type == ChainUnitType.type_feature:
-        #     return ChainUnitType.mode_question
-        # elif self.progression_level >= 3 and unit_type == ChainUnitType.type_key:
-        #     return ChainUnitType.mode_hidden
-        # else:
-        #     return ChainUnitType.mode_open
 
     def ask_for_image(self):
         if self.attached_image and self.progression_level <2:
@@ -146,48 +121,57 @@ class ChainedFeature():
 
     def set_extra(self, unit_type):
         return ChainUnitType.extra_focus
-        # if self.progression_level == 0 and unit_type == ChainUnitType.type_key:
-        #     return ChainUnitType.extra_focus
-        # if self.progression_level == 1 and unit_type == ChainUnitType.type_key:
-        #     return ChainUnitType.extra_focus 
-        # elif self.progression_level == 2 and unit_type == ChainUnitType.type_feature:
-        #     return ChainUnitType.extra_focus
-        # elif self.progression_level >= 3 and unit_type == ChainUnitType.type_feature:
-        #     return ChainUnitType.extra_focus
-        # else:
-        #     return None
 
     def get_timing(self):
         return self.basic_timing_per_level[self.progression_level]
 
 
     def get_context(self):
-       features = [ChainUnit(_, ChainUnitType.type_feature,
-                                 self.set_mode(ChainUnitType.type_feature),
-                                 ChainUnitType.position_features, i+1,
-                              preferred_position = i,
-                             extra = self.set_extra(ChainUnitType.type_feature)) for (i,_) in enumerate(self.features)]
-       subtitle = [ChainUnit(self.main_feature, ChainUnitType.type_feature,
+       source = [ChainUnit(self.source, ChainUnitType.type_feature,
                                  self.set_mode(ChainUnitType.type_feature),
                                  ChainUnitType.position_keys, 0,
                               preferred_position = "MAIN_FEATURE",
                               extra = self.set_extra(ChainUnitType.type_feature))]
-       return features + subtitle
+
+       start_point = [ChainUnit(self.start_point, ChainUnitType.type_feature,
+                                 self.set_mode(ChainUnitType.type_feature),
+                                 ChainUnitType.position_keys, 0,
+                              preferred_position = "MAIN_FEATURE",
+                              extra = self.set_extra(ChainUnitType.type_feature))]
+       return source + start_point
+
+    def get_question_candles(self):
+        return self.candles[:VISUAL_PART]
+
+    def get_question_candles_minmax(self):
+        min_price = min(self.candles[:VISUAL_PART], key = lambda _ : _.l).l
+        max_price = max(self.candles[:VISUAL_PART], key = lambda _ : _.h).h
+        return min_price, max_price
+
+
+    def get_resulting_candles(self):
+        return self.candles[STAKE_PART:]
+
+    def get_all_candles(self):
+        return self.candles
 
 
     def get_main_title(self):
-        return self.entity
+        return self.source
 
     def register_progress(self, is_solved = False):
         timing = self.basic_timing_per_level[self.progression_level]
         level = self.progression_level
+        print(self.source)
+        print("start point ", self.start_point)
+        print("solved feedback ", is_solved)
         if is_solved:
-            self.basic_timing_per_level[self.progression_level] = timing +5 if timing < 50 else 50 
+            self.basic_timing_per_level[self.progression_level] = timing +4 if timing < 40 else 40 
             self.progression_level = level + 1 if level < 2 else 2 
             self.rised = True
             self.decreased = False
         else:
-            self.basic_timing_per_level[self.progression_level] = timing -5 if timing > 30 else 30 
+            self.basic_timing_per_level[self.progression_level] = timing -4 if timing > 20 else 20 
             self.progression_level = level -1 if level > 0 else 0 
             self.decreased = True
             self.rised = False
@@ -208,25 +192,15 @@ class FeaturesChain():
     def __init__(self, chain_no, features):
         self.chain_no = chain_no
         self.features = features
-        self.features.append(self.create_review_chain(self.features))
         self.progression_level = 0
         self.recall_level = 0
         self.active_position = -1
         self.ascended = False
-
-    def create_review_chain(self, features):
-        in_key = features[0].main_feature
-        out_key = features[-1].main_feature
-        entity = "*"
-        main_feature = features[0].entity
-        key_feature_pairs = []
-        for feature in features[1:]:
-            key_feature_pairs.append(feature.main_feature)
-            key_feature_pairs.append(feature.entity)
-        return ChainedFeature(entity, in_key, out_key, main_feature, key_feature_pairs)
+        self.active_changed = False
 
     def ascend(self):
         for feature in self.features:
+            # feature.progression_level = 4
             feature.progression_level = 2
             feature.deselect()
 
@@ -234,19 +208,34 @@ class FeaturesChain():
         for image, feature in zip(images_list, self.features):
             feature.attached_image = image
 
+    def check_active_changed(self):
+        if self.active_changed:
+            self.active_changed = False
+            return True
+        return False
+
     def get_next_feature(self):
+        # 0 level - card readed.
+        # Next step is to restore associated keys
         level = self.features[self.active_position].progression_level
         is_fallback = self.features[self.active_position].decreased
         is_up = self.features[self.active_position].rised
+        print("current level ", level)
+        print("is up ", is_up)
+        # two main factors are card chain level and
+        # the way level was acheived - by recall or by forgetting some
         if level == 0 and is_fallback:
+            # back to zero means - learn chain again
             return self.features[self.active_position]
         if level == 1:
+            # reached 1 means - learn keys
             return self.features[self.active_position]
         if level == 2 and not is_up:
             return self.features[self.active_position]
         
         self.features[self.active_position].deselect()
         self.active_position += 1
+        self.active_changed = True
         if self.active_position >= len(self.features):
             self.active_position = 0
             self.progression_level += 1
@@ -255,7 +244,7 @@ class FeaturesChain():
         return self.features[self.active_position]
 
     def get_features_list(self):
-        units_list = [ChainUnit(_.entity + f" {_.progression_level}", font = ChainUnitType.font_utf) for _ in self.features]
+        units_list = [ChainUnit(_.start_point + f" {_.progression_level}", font = ChainUnitType.font_utf) for _ in self.features]
         # TODO specify in config
         if len(units_list) < 12:
             delta_len = 12 - len(units_list)
@@ -270,7 +259,7 @@ class ChainedModel():
         self.chains = chains
         self.active_chain_index = 0
         self.old_limit = 2
-        self.new_limit = 2
+        self.is_changed = False
 
         is_restored = self.restore_results(PROGRESSION_FILE)
 
@@ -291,9 +280,7 @@ class ChainedModel():
             self.chains.sort(key = lambda _ : _.progression_level + _.recall_level * 0.25)
         else:
             self.chains.sort(key = lambda _ : _.progression_level)
-            if not self.new_limit:
-                self.old_limit = 2
-                self.new_limit = 2
+            self.old_limit = 2
         self.dump_results(PROGRESSION_FILE)
 
     def change_active_chain(self):
@@ -302,8 +289,6 @@ class ChainedModel():
         self.active_chain = self.chains[0]
         if self.active_chain.recall_level < 0:
             self.old_limit -= 1
-        else:
-            self.new_limit -= 1
         self.active_chain.recall_level = 0
 
     def get_options_list(self, sample):
@@ -313,7 +298,7 @@ class ChainedModel():
             preferred_position = sample.preferred_position
             if sample.type == ChainUnitType.type_feature:
                 if preferred_position == "MAIN_FEATURE":
-                    selected = random_chain.main_feature
+                    selected = random_chain.start_point
                 elif preferred_position is None or preferred_position >= len(random_chain.features):
                     selected = random.choice(random_chain.features)
                 else:
@@ -327,6 +312,8 @@ class ChainedModel():
         if not next_chain:
             self.change_active_chain()
             next_chain = self.active_chain.get_next_feature()
+
+        self.is_changed = self.active_chain.check_active_changed()
 
         return next_chain
 
@@ -362,8 +349,7 @@ class ChainedModel():
             return False
 
     def get_chains_list(self):
-        units_list = [ChainUnit(_.features[0].entity + "..." + _.features[-1].entity + f" {_.progression_level} | {_.recall_level}", font = ChainUnitType.font_utf) for _ in sorted(self.chains, key = lambda _ : _.progression_level + _.recall_level*0.25, reverse = True)]
-        # TODO specify in config
+        units_list = [ChainUnit(_.features[0].start_point + "..." + _.features[-1].start_point + f" {_.progression_level} | {_.recall_level}", font = ChainUnitType.font_utf) for _ in sorted(self.chains, key = lambda _ : _.progression_level + _.recall_level*0.25, reverse = True)]
         if len(units_list) < 12:
             delta_len = 12 - len(units_list)
             units_list += [ChainUnit("") for _ in range(delta_len)]
@@ -375,7 +361,6 @@ class ChainedModel():
         minimal_level = min(self.chains, key = lambda _ : _.progression_level).progression_level
         mastered = len(list(filter(lambda _: _.progression_level > minimal_level, self.chains)))
         return f"{minimal_level}x {mastered}/{len(self.chains)}"
-
 
     def get_active_chain(self):
         return self.chains[self.active_chain_index]

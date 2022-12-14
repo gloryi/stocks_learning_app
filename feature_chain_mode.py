@@ -5,7 +5,7 @@ from math import sqrt
 from itertools import compress, groupby
 import random
 import re
-from config import W, H, CYRILLIC_FONT, CHINESE_FONT, H_OFFSET, W_OFFSET
+from config import W, H, CYRILLIC_FONT, CHINESE_FONT, VISUAL_PART, STAKE_PART, META_SCRIPT
 from colors import col_bg_darker, col_wicked_darker
 from colors import col_active_darker, col_bg_lighter
 from colors import col_wicked_lighter, col_active_lighter
@@ -19,24 +19,32 @@ NEW_EVENT = False
 ######################################
 
 class ChainedsProducer():
-    def __init__(self, label, csv_path, ui_ref = None):
+    def __init__(self, label, csv_path, meta_path = None, ui_ref = None):
         self.csv_path = csv_path
         self.label = label 
+        self.meta_path = meta_path
+        self.meta_lines = self.extract_meta(self.meta_path) if self.meta_path else []
         self.chains = self.prepare_data()
         self.active_chain = self.chains.get_active_chain()
         self.ui_ref = ui_ref
+        self.is_changed = False
+
+    def extract_meta(self, meta_path):
+        meta = []
+        with open(meta_path, "r") as metafile:
+            for line in metafile:
+                meta.append(line[:-1].upper())
+        return meta
 
     def prepare_data(self):
         data_extractor = raw_extracter(self.csv_path) 
         chains = []
-        for key, group in groupby(list(_ for _ in data_extractor), key = lambda _ : _[0]):
-            features = []
-            for item in group:
-                entity, in_key, out_key, main_feature, *key_feature_pairs = item[1:]
-                # HARDCODE
-                key_feature_pairs = key_feature_pairs[2:6]
-                features.append(ChainedFeature(entity, in_key, out_key, main_feature, key_feature_pairs))
-            chains.append(FeaturesChain(key, features))
+        features = []
+        for i, (source, start_line) in enumerate(data_extractor):
+            features.append(ChainedFeature(source, start_line))
+            if i%5==0:
+                chains.append(FeaturesChain(str(i//5), features))
+                features = []
         return ChainedModel(chains)
 
     def produce_chain(self):
@@ -44,7 +52,15 @@ class ChainedsProducer():
         return self.active_chain
 
     def produce_next_feature(self):
-        return self.chains.get_next_feature()
+        next_features_chain = self.chains.get_next_feature()
+        self.is_changed = self.chains.is_changed
+        
+        return next_features_chain 
+
+    def produce_meta(self):
+        if self.meta_lines:
+            return random.choice(self.meta_lines)
+        return ""
 
 
 ######################################
@@ -63,8 +79,6 @@ class ChainedEntity():
 
         self.W, self.H = W, H
 
-        self.x_positions = [self.W//7*(i+1) - self.W//14 for i in range(7)]
-
         self.chained_feature = chained_feature
         self.features_chain = features_chain
         self.chains = chains
@@ -76,11 +90,27 @@ class ChainedEntity():
 
         self.correct = False
         self.error = False
+
+        self.mode = "QUESTION"
         
         self.feedback = None
         self.done = True
-        self.locked = False
         self.time_perce_reserved = 0.0
+
+        min_price, max_price = self.chained_feature.get_question_candles_minmax()
+        self.question_pxls_to_price = lambda _y : min_price + (1 - (_y / self.H) ) * (max_price - min_price)
+
+        self.entry = None
+        self.sl = None
+        self.tp = None
+        self.entry_activated = None
+        self.stop_activated = None
+        self.profit_activated = None
+
+        self.variation = 0
+        self.variation_on_rise = True
+
+        self.question_index = VISUAL_PART
 
         self.options = None
         self.active_question = None
@@ -89,7 +119,6 @@ class ChainedEntity():
             self.time_estemated = self.chained_feature.get_timing() / (len(self.questions_queue)+1) 
             self.done = False
         else:
-            #self.time_estemated = self.chained_feature.get_timing() / (len(self.context)//2 +1) 
             self.time_estemated = self.chained_feature.get_timing() / (len(self.context) +1) 
 
 
@@ -106,16 +135,52 @@ class ChainedEntity():
             self.options = self.chains.get_options_list(self.active_question)
 
     def delete_options(self):
-        self.options = ["" for _ in range(6)]
+        self.options = [random.choice(["+++", "***", "###"]) for _ in range(6)]
+
+    def check_sltp_hit(self):
+        global LAST_EVENT
+        global NEW_EVENT
+        LAST_EVENT = "POSITIVE"
+        NEW_EVENT = True
+
+        if not self.sl or not self.entry or not self.tp:
+            return False
+        candles = self.chained_feature.get_all_candles()
+        triggered = False
+        within = lambda price, candle: price <= candle.h and price >= candle.l
+        for i, c in enumerate(candles[VISUAL_PART:]):
+            if within(self.entry, c):
+                self.entry_activated = True
+                triggered = True
+
+            if triggered and within(self.sl, c):
+                self.stop_activated = True
+                LAST_EVENT = "ERROR"
+                return False
+            
+            if triggered and within(self.tp, c):
+                self.profit_activated = True
+                LAST_EVENT = "POSITIVE"
+                return True
+                
+        LAST_EVENT = "ERROR"
+
+        return False
 
     def register_answers(self):
-        is_solved = len(self.questions_queue) == 0
-        self.chained_feature.register_progress(is_solved = is_solved)
-        return is_solved 
+        if self.mode == "QUESTION":
+            is_solved = self.check_sltp_hit()
+            self.chained_feature.register_progress(is_solved = is_solved)
+
+        if self.mode == "QUESTION":
+            self.mode = "SHOW"
+            self.question_index = VISUAL_PART - STAKE_PART
+        elif self.mode == "SHOW":
+            self.mode = "DONE"
+
+        return False 
 
     def match_correct(self):
-        if self.locked:
-            return
         global LAST_EVENT
         global NEW_EVENT
         LAST_EVENT = "POSITIVE"
@@ -140,11 +205,12 @@ class ChainedEntity():
         global NEW_EVENT
         LAST_EVENT = "ERROR"
         NEW_EVENT = True
-        self.locked = True
 
-        #self.generate_options()
+        self.generate_options()
 
     def register_keys(self, key_states, time_percent, time_based = False):
+        if time_based:
+            self.variate()
         if self.active_question and not time_based:
             self.time_perce_reserved = time_percent
             for i, key in enumerate(key_states):
@@ -163,12 +229,29 @@ class ChainedEntity():
             if self.done:
                 time_p = (time_p - self.time_perce_reserved)/(1.0 - self.time_perce_reserved)
 
-            #n_pairs = len(self.context)/2
             n_pairs = len(self.context)
             pair_perce = 1/n_pairs
 
             pair_to_show = int(time_p/pair_perce)
             self.order_in_work = pair_to_show
+
+    def register_mouse(self, mouse_poses):
+        if self.mode == "QUESTION":
+            mouse_position = self.pygame_instance.mouse.get_pos()
+            LMB, RMB = 0, 2
+            if mouse_poses[LMB]:
+                self.entry = self.question_pxls_to_price(mouse_position[1])
+        
+            if mouse_poses[RMB]:
+                self.sl = self.question_pxls_to_price(mouse_position[1])
+
+            if self.entry and self.sl:
+                risk = self.entry - self.sl
+                reward = risk * 3
+                self.tp = self.entry + reward
+
+    def get_sltp(self):
+        return self.entry, self.sl, self.tp
 
 
     def produce_geometries(self):
@@ -176,94 +259,32 @@ class ChainedEntity():
         set_color = lambda _ : colors.col_active_lighter if _.extra else col_wicked_darker if _.type == ChainUnitType.type_key else colors.feature_text_col if _.type == ChainUnitType.type_feature  else colors.col_correct if _.mode == ChainUnitType.mode_highligted else colors.col_black 
         set_bg_color = lambda _ : colors.col_bt_down if _.extra else col_active_darker if _.type == ChainUnitType.type_key else colors.feature_bg 
         get_text  = lambda _ : _.text if self.done or _.mode == ChainUnitType.mode_open else "???"  if _.mode == ChainUnitType.mode_question else ""
-        get_position_x = lambda _ : self.x_positions[_.order_no+1]  
         get_y_position = lambda _ : self.H//2 - self.H//4 + self.H//16 if _.position == ChainUnitType.position_subtitle else self.H//2 - self.H//16 if _.position == ChainUnitType.position_keys else self.H//2 + self.H//16
         set_font = lambda _ : ChainUnitType.font_cyrillic if not re.search(u'[\u4e00-\u9fff]', _.text) else ChainUnitType.font_utf
         set_size = lambda _ : 30 if not re.search(u'[\u4e00-\u9fff]', _.text) else 40
 
-        ctx_len = len(self.context)//2
-        ctx_y_origin = 275 - 50 
-        ctx_x_origin = 500 - 50 
-        for ctx in self.context:
-            order_y_origin = ctx_y_origin
-            ctx_x = ctx_x_origin 
-            ctx_h = 50
-            ctx_w = 250
-            ctx_order = ctx.order_no
-            ctx_type = ctx.type
-
-            order_delta = self.order_in_work - ctx_order 
-
-            if order_delta < 0:
-                ctx_x += 250/2
-                order_y_origin -= 25
-            elif order_delta > 0:
-                order_y_origin += 200 + 25 
-                if ctx_type == ChainUnitType.type_feature:
-                    ctx_x += 250/2
-            else:
-                if order_delta == 0:
-                    ctx_x += 250/2
-                #else:
-                    #ctx_x += 250/2
-
-            if ctx_type == ChainUnitType.type_feature:
-                ctx_y = order_y_origin + order_delta * 50 
-                #ctx_x += 250
-
-            else:
-                ctx_y = order_y_origin + order_delta * 50 
-                #ctx_x += 250
-
-            cx, cy = ctx_x + ctx_w/2, ctx_y + ctx_h/2
-
-            graphical_objects.append(WordGraphical(get_text(ctx),
-                                                   cx,
-                                                   cy,
-                                                   set_color(ctx),
-                                                   set_bg_color(ctx),
-                                                   font = set_font(ctx),
-                                                   font_size = set_size(ctx),
-                                                   rect = [ctx_x, ctx_y, ctx_w, ctx_h]))
-
-        options_x1 = 320
-        options_y1 = 325
-        options_x_corners = [320+55, 320+55, 320+55, 320+250*2+5, 320+250*2+5, 320+250*2+5]
-        options_y_corners = [275, 275+75, 275+150, 275, 275+75, 275+150]
-        options_w = 200
-        options_h = 50
         set_font = lambda _ : ChainUnitType.font_cyrillic if not re.search(u'[\u4e00-\u9fff]', _) else ChainUnitType.font_utf
         set_size = lambda _ : 30 if not re.search(u'[\u4e00-\u9fff]', _) else 40
-        if self.options:
-            for i, (x1, y1) in enumerate(zip(options_x_corners, options_y_corners)):
-                xc, yc = x1 + options_w / 2, y1 + options_h / 2
- 
-                graphical_objects.append(WordGraphical(self.options[i],
-                                                       xc,
-                                                       yc,
-                                                       colors.col_bt_text, transparent = True,
-                                                       font = set_font(self.options[i]),
-                                                       font_size = set_size(self.options[i]),
-                                                        rect = [x1, y1, options_w, options_h]))
-
-
-        large_notions_x_corners = [575]
-        large_notions_y_corners = [275]
-        large_notion_w = 250
-        large_notion_h = 200
-        for i, (x1,y1) in enumerate(zip(large_notions_x_corners, large_notions_y_corners)):
-            xc, yc = x1 + large_notion_w/2, y1 + large_notion_h/2
-
-            graphical_objects.append(WordGraphical(self.chained_feature.entity,
-                                     xc, yc,
-                                     colors.col_black,
-                                     bg_color = None if i == 0 else col_correct if LAST_EVENT == "POSITIVE" else col_error,
-                                    font_size = 120,
-                                   font = ChainUnitType.font_utf,
-                                     rect = [x1, y1, large_notion_w, large_notion_h]))
-
 
         return graphical_objects
+
+    def produce_candles(self):
+        if self.mode == "QUESTION":
+            return self.chained_feature.get_question_candles()
+        else:
+            return self.chained_feature.get_resulting_candles()
+
+    def variate(self):
+        if self.variation_on_rise:
+            self.variation += 1
+        else:
+            self.variation -= 1
+
+        if self.variation > 10:
+            self.variation_on_rise = False
+        elif self.variation < -10:
+            self.variation_on_rise = True
+
 
     def fetch_feedback(self):
         to_return = self.feedback
@@ -342,43 +363,220 @@ class ChainedDrawer():
                 text = font.render(message, True, geometry.color)
 
             textRect = text.get_rect()
-            textRect.center = (geometry.x + W_OFFSET, geometry.y + H_OFFSET)
+            textRect.center = (geometry.x, geometry.y)
 
             if geometry.rect:
 
                 x, y, w, h = geometry.rect 
                 self.pygame_instance.draw.rect(self.display_instance,
                                   (50,50,50),
-                                  (x+W_OFFSET,y+H_OFFSET,w,h),
+                                  (x,y,w,h),
                                    width = 2)
 
             self.display_instance.blit(text, textRect)
 
-    def display_keys(self, keys, line):
-        if line.done:
-            return
-        options_x1 = 320
-        options_y1 = 325
-        options_x_corners = [320+55, 320+55, 320+55, 320+250*2+5, 320+250*2+5, 320+250*2+5]
-        options_y_corners = [275, 275+75, 275+150, 275, 275+75, 275+150]
-        options_w = 200
-        options_h = 50
+    def display_keys(self, keys):
+        pass
 
-        for i, (x1, y1) in enumerate(zip(options_x_corners, options_y_corners)):
-            key_state = keys[i]
-            xc, yc = x1 + options_w / 2, y1 + options_h / 2
+    def minMaxOfZone(self, candleSeq):
+        minP = min(candleSeq, key = lambda _ : _.l).l
+        maxP = max(candleSeq, key = lambda _ : _.h).h
+        return minP, maxP
 
-            color = (255,255,255)
-            if key_state == "up":
-                color = colors.col_bt_down if LAST_EVENT == "POSITIVE" else colors.col_error 
-            elif key_state == "down":
-                color = colors.col_bt_pressed if LAST_EVENT == "POSITIVE" else colors.col_active_lighter
+    def generateOCHLPicture(self, line):
+
+
+        def drawSquareInZone(zone ,x1,y1,x2,y2, col):
+            try:
+                X = zone[0]
+                Y = zone[1]
+                dx = zone[2] - X
+                dy = zone[3] - Y
+                X1 = int(X + dx*x1)
+                Y1 = int(Y + dy*y1)
+                X2 = int(X + dx*x2)
+                Y2 = int(Y + dy*y2)
+                X1, X2 = min(X1, X2), max(X1, X2)
+                Y1, Y2 = min(Y1, Y2), max(Y1, Y2)
+                self.pygame_instance.draw.rect(self.display_instance,col,
+                                               (Y1,X1,(Y2-Y1),(X2-X1)))
+            except Exception as e:
+                pass
+
+        def drawLineInZone(zone ,x1,y1,x2,y2, col, thickness = 1):
+            try:
+                X = zone[0]
+                Y = zone[1]
+                dx = zone[2] - X
+                dy = zone[3] - Y
+                X1 = int(X + dx*x1)
+                Y1 = int(Y + dy*y1)
+                X2 = int(X + dx*x2)
+                Y2 = int(Y + dy*y2)
+                self.pygame_instance.draw.line(self.display_instance,col,
+                                               (Y1,X1),(Y2,X2),thickness)
+            except Exception as e:
+                pass
+
+        def hex_to_bgr(hx):
+            hx = hx.lstrip('#')
+            return tuple(int(hx[i:i+2], 16) for i in (0, 2, 4))
+
+        def getCandleCol(candle, v_rising = False):
+            col = "#FFFFFF"
+
+            if candle.green:
+                col = "#5F7942"
+            elif candle.red:
+                col = "#FA7072"
+
+            rgb_col = hex_to_bgr(col)
+            clip_color = lambda _ : 0 if _ <=0 else 255 if _ >=255 else int(_)
+            if candle.green:
+                rgb_col = (clip_color(rgb_col[0]-2*line.variation),
+                           clip_color(rgb_col[1]),
+                           clip_color(rgb_col[2]-2*line.variation))
             else:
-                color = (0,150,100)
+                rgb_col = (clip_color(rgb_col[0]),
+                           clip_color(rgb_col[1]+2*line.variation),
+                           clip_color(rgb_col[2]+2*line.variation))
 
-            self.pygame_instance.draw.rect(self.display_instance,
-                                  color,
-                                  (x1+W_OFFSET, y1+H_OFFSET, options_w, options_h))
+
+            return rgb_col 
+
+        def fitTozone(val, minP, maxP):
+            candleRelative =  (val-minP)/(maxP-minP)
+            return candleRelative
+
+        def drawCandle( zone, candle, minP,
+                       maxP,
+                       p1,
+                       p2, entry = None, stop = None, profit = None, v_rising = False, last = False):
+            i = candle.index - p1
+            col = getCandleCol(candle, v_rising)
+            _o,_c,_h,_l = candle.ochl()
+
+            oline = fitTozone(_o, minP, maxP)
+            cline = fitTozone(_c, minP, maxP)
+            lwick = fitTozone(_l, minP, maxP)
+            hwick = fitTozone(_h, minP, maxP)
+            
+
+            if last:
+                drawLineInZone( zone, 1-oline,(i+0.5-0.3)/depth,1-oline,(i+0.5+0.3)/depth,col,thickness=5)
+                return
+
+            candle_len = hwick - lwick
+
+            if entry and entry >_l and entry < _h:
+                drawSquareInZone( zone, 1-hwick-candle_len/6,(i+0.5-0.55)/depth,1-lwick+candle_len/6,(i+0.5+0.55)/depth,(colors.col_bt_pressed))
+            elif stop and stop > _l and stop < _h:
+                drawSquareInZone( zone, 1-hwick-candle_len/6,(i+0.5-0.55)/depth,1-lwick+candle_len/6,(i+0.5+0.55)/depth,(colors.col_wicked_darker))
+            elif profit and profit > _l and profit < _h:
+                drawSquareInZone( zone, 1-hwick-candle_len/6,(i+0.5-0.55)/depth,1-lwick+candle_len/6,(i+0.5+0.55)/depth,(colors.col_bg_lighter))
+
+            #else:
+                #drawSquareInZone( zone, 1-hwick-candle_len/6,(i+0.5-0.55)/depth,1-lwick+candle_len/6,(i+0.5+0.55)/depth,(colors.col_bt_down))
+
+            drawLineInZone( zone, 1-lwick,(i+0.5)/depth,1-hwick,(i+0.5)/depth,col,thickness=3)
+            drawSquareInZone( zone, 1-cline,(i+0.5-0.3)/depth,1-oline,(i+0.5+0.3)/depth,col)
+
+            if candle.long_entry:
+                eline = fitTozone(candle.entry_level, minP, maxP)
+                drawLineInZone( zone, 1-eline,(i+0.5-3)/depth,1-eline,1,(125,155,0), thickness = 10)
+
+            if candle.short_entry:
+                eline = fitTozone(candle.entry_level, minP, maxP)
+                drawLineInZone( zone, 1-eline,(i+0.5-5)/depth,1-eline,1,(24,0,150), thickness = 10)
+
+            if candle.exit:
+                eline = fitTozone(candle.exit_level, minP, maxP)
+                drawLineInZone( zone, 1-eline,(i+0.5-5)/depth,1-eline,1,(200,0,0), thickness = 10)
+
+            if candle.initial:
+                drawLineInZone( zone, 1,(i+0.5)/depth,0,(i+0.5)/depth,col,thickness=3)
+
+        def drawCandles(line, candles, zone, minV, maxV, p1, p2, entry=None, stop=None, profit=None):
+
+            prev_v = candles[0].v
+
+            for i, candle in enumerate(candles):
+                if i == line.question_index-1:
+                    drawLineInZone( zone, 1,(i+0.5)/len(candles),0,(i+0.5)/len(candles),(50,50,0), thickness = 3)
+                v_rising = candle.v > prev_v
+                prev_v = candle.v
+                last = i == len(candles)-1
+                drawCandle(zone, candle, minV, maxV, p1, p2, entry=entry, stop=stop, profit=profit, v_rising = v_rising, last = last)
+
+        def drawSLTP(H, W, minV, maxV, zone,
+                     entry = None, stop = None, profit = None,
+                     entry_activated = False, stop_activated = False, profit_activated = False):
+            if entry:
+                line_level = fitTozone(entry, minV, maxV)
+                if not entry_activated:
+                    drawLineInZone( zone, 1-line_level,
+                                   0,1-line_level,1,
+                                   (150,255,150), thickness = 2)
+                else:
+                    drawLineInZone( zone, 1-line_level,
+                                   0,1-line_level,
+                                   1,(150,255,150),
+                                   thickness = 5)
+            if stop:
+                line_level = fitTozone(stop, minV, maxV)
+                if not stop_activated:
+                    drawLineInZone( zone,
+                                   1-line_level,0,1-line_level,1,
+                                   (255,150,150), thickness = 2)
+                else:
+                    drawLineInZone( zone, 1-line_level,0,1-line_level,1,
+                                   (255,150,150), thickness = 5)
+            if profit:
+                line_level = fitTozone(profit, minV, maxV)
+                if not profit_activated:
+                    drawLineInZone( zone, 1-line_level,0,1-line_level,1,
+                                   (255,150,255), thickness = 2)
+                else:
+                    drawLineInZone( zone, 1-line_level,0,1-line_level,1,
+                                   (255,150,255), thickness = 5)
+
+
+        candles = line.produce_candles()
+
+        depth = len(candles) + 1
+        PIXELS_PER_CANDLE = 10
+
+        W = self.W
+        H = self.H
+
+        firstSquare  = [0,  0, H, W]
+        minV, maxV = self.minMaxOfZone(candles)
+        entry, stop, profit = line.get_sltp()
+        entry_activated =  line.entry_activated
+        stop_activated = line.stop_activated
+        profit_activated = line.profit_activated
+        draw_tasks = []
+        draw_tasks.append([candles, firstSquare])
+
+
+        for d_task in draw_tasks:
+
+            candles = d_task[0]
+            zone = d_task[1]
+            depth = len(candles)
+
+            p1 = candles[0].index
+            p2 = candles[-1].index
+
+            minV, maxV = self.minMaxOfZone(candles)
+            drawCandles(line, candles, zone, minV, maxV, p1, p2, entry=entry, stop=stop, profit=profit)
+
+        drawSLTP(H, W, minV, maxV,
+                 firstSquare, entry=entry, stop=stop, profit=profit,
+                 entry_activated=entry_activated,
+                 stop_activated=stop_activated,
+                 profit_activated=profit_activated)
+
  
             
 
@@ -435,7 +633,7 @@ class ChainedProcessor():
     def __init__(self, pygame_instance, display_instance, ui_ref, data_label, data_path, beat_time = 1):
         self.W = W
         self.H = H
-        self.producer = ChainedsProducer(data_label, data_path, ui_ref)
+        self.producer = ChainedsProducer(data_label, data_path, meta_path = META_SCRIPT, ui_ref = ui_ref)
         self.drawer = ChainedDrawer(pygame_instance, display_instance, W, H)
         self.control = KeyboardChainModel(pygame_instance)
         self.active_line = None
@@ -449,34 +647,44 @@ class ChainedProcessor():
                                            self.producer.chains,
                                            self.pygame_instance, self.W, self.H)
         self.ui_ref.set_image(self.active_entity.chained_feature.ask_for_image())
-        self.ui_ref.randomize()
+        self.ui_ref.meta_text = ""
         self.ui_ref.global_progress = self.producer.chains.get_chains_progression()
         self.ui_ref.tiling = self.active_entity.main_title
-        self.ui_ref.show_less = False
 
     def add_line(self):
 
+        line_swapped = False
+
         if self.active_entity:
             is_solved = self.active_entity.register_answers()
+            self.ui_ref.set_image(self.active_entity.chained_feature.ask_for_image())
+            self.ui_ref.meta_text = ""
+            self.ui_ref.global_progress = self.producer.chains.get_chains_progression()
+
+        #if self.active_entity.mode == "SHOW":
+            #self.ui_ref.meta_text = self.producer.produce_meta()
+
+        if self.active_entity.mode == "DONE":
+            self.ui_ref.set_image(self.active_entity.chained_feature.ask_for_image())
+            self.ui_ref.global_progress = self.producer.chains.get_chains_progression()
             
-        self.active_entity = ChainedEntity(self.producer.produce_next_feature(),
-                                           self.producer.produce_chain(), self.producer.chains,
-                                           self.pygame_instance, self.W, self.H)
+            self.active_entity = ChainedEntity(self.producer.produce_next_feature(),
+                                               self.producer.produce_chain(), self.producer.chains,
+                                               self.pygame_instance, self.W, self.H)
 
-        self.ui_ref.set_image(self.active_entity.chained_feature.ask_for_image())
-        self.ui_ref.randomize()
-        self.ui_ref.global_progress = self.producer.chains.get_chains_progression()
-        self.ui_ref.tiling = self.active_entity.main_title
-        self.ui_ref.bg_color = colors.col_black
-        self.ui_ref.show_less = False
-        self.time_elapsed_cummulative = 0
-        self.active_beat_time = (60*1000)/self.active_entity.time_estemated
+            self.ui_ref.tiling = self.active_entity.main_title
+            self.ui_ref.meta_text = "" 
+            self.time_elapsed_cummulative = 0
+            self.active_beat_time = (60*1000)/self.active_entity.time_estemated
 
-        return self.active_entity.time_estemated
+        line_swapped = self.producer.is_changed
+
+        return self.active_entity.time_estemated, line_swapped 
 
 
     def redraw(self):
         self.drawer.draw_line(self.active_entity)
+        self.drawer.generateOCHLPicture(self.active_entity)
     
     def get_pressed(self, key_states):
         mark_pressed = lambda _ : True if _ == "pressed" else False
@@ -495,11 +703,9 @@ class ChainedProcessor():
         else:
             return 0
 
-
     def process_inputs(self, time_elapsed = 0):
         key_states = self.control.get_keys()
-        if self.active_entity:
-            self.drawer.display_keys(key_states, self.active_entity)
+        self.drawer.display_keys(key_states)
 
         pressed_keys = self.get_pressed(key_states)
 
@@ -509,10 +715,10 @@ class ChainedProcessor():
             self.active_entity.register_keys(pressed_keys,
                                              self.time_elapsed_cummulative / self.active_beat_time, 
                                              time_based = True)
-            if self.active_entity.done:
-                self.ui_ref.set_image(self.active_entity.chained_feature.attached_image)
-                self.ui_ref.show_less = True
 
+        pressed_mouse = self.pygame_instance.mouse.get_pressed()
+        if self.active_entity and any(pressed_mouse):
+            self.active_entity.register_mouse(pressed_mouse)
 
 
     def tick(self, beat_time, time_elapsed):

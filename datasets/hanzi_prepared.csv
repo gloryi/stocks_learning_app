@@ -93,6 +93,21 @@
 38,为,польза,друг,do,игра,wèi,изба,be,факт,act,скандал,handle,январь,govern
 38,到,друг,тело,go to,вода,dào,время,arrive,кабинет,been to
 38,以,тело,город,thereby,рожь,yǐ,профессор,therefore,заведение,by means of
+39,要,интерес,граница,necessary,ложь,yào,сожаление,essential,принцип,necessity
+39,就,граница,стол,just,иней,jiù,народ,near,работа,go to,импульс,simply,музыкант,to come
+39,可,стол,заем,may,рука,kě,окно,can,белок, -able,психолог,possibly
+39,得,заем,путь,get,друг,dé,день,gain,бетон,obtain,порядок,acquire
+39,过,путь,интерес,pass,душа,guò,лекарство,go across
+40,道,пора,путь,path,вода,dào,жена,way,город,road,старик,street,команда,method
+40,所,путь,поле,place,союз,suǒ,электрон,location
+40,然,поле,слой,yes,жанр,rán,прошлое,pledge,просмотр,promise,журналист,certainly
+40,事,слой,фирма,affair,стол,shì,смерть,matter,разница,business,средство,to serve,сотрудник,accident
+40,动,фирма,пора,move,фонд,dòng,парень,happen,конец,action,документ,movement
+41,还,сайт,тайм,yet,игра,hái,лист,still,слово,also,создание,besides
+41,进,тайм,страна,enter,зной,jìn,всадник,advance
+41,但,страна,воин,only,фонд,dàn,брат,but,стол,yet,власть,still,разговор,however
+41,因,воин,банк,by,нога,yīn,закон,cause,зрение,reason
+41,从,банк,сайт,by,жена,cóng,форма,from,стена,since,сторона,whence,уровень,through
 42,为,друг,душа,do,игра,wèi,изба,be,факт,act,скандал,handle,январь,govern
 42,到,душа,тело,go to,вода,dào,время,arrive,кабинет,been to
 42,以,тело,ребята,thereby,ложь,yǐ,профессор,therefore,заведение,by means of
@@ -258,6 +273,26 @@
 74,心,карниз,автор,heart,нога,xīn,народ,mind,слово,soul
 74,只,автор,воин,only,союз,zhǐ,свет,just,импульс,simply
 74,实,воин,гость,real,стол,shí,труба,true,сторона,honest,рисунок,sincere
+75,地,город,право,earth,друг,de,слово,soil,родина,ground,регион,region
+75,而,право,фонд,and,рожь,ér,брат,but,студент,and yet,движение,and then
+75,于,фонд,нога,in,ложь,yú,жена,on,стол,at,работа,go to,министр,surname
+75,自,нога,стул,self,глаз,zì,форма,from,отправка,private,персонал,personal
+75,发,стул,город,issue,факт,fā,образ,hair,господин,dispatch,страдание,send out
+76,用,союз,звук,use,нога,yòng,груз,use,польза,apply,диплом,employ,портрет,operate
+76,行,звук,ложь,go,жена,xíng,закон,walk,вотум,move,квартал,travel,лекарство,circulate
+76,种,ложь,исход,seed,жизнь,zhǒng,сырье,race,дружба,breed,плотность,to plant
+76,成,исход,текст,fixed,день,chéng,дипломат,completed,телефон,finished
+76,方,текст,союз,local,фонд,fāng,рисунок,a square,интерес,a region,километр,rectangle
+77,法,ложь,глаз,law,факт,fǎ,рубль,rule,сарафан,France,инфаркт,French,улица,statute
+77,如,глаз,фонд,if,рожь,rú,союз,as,школа,like,конфуз,as if,позиция,supposing
+77,当,фонд,брат,bear,дань,dāng,свет,just,спутник,accept,директор,undertake
+77,定,брат,факс,fix,дыня,dìng,судьба,decide,лицо,settle
+77,其,факс,ложь,his,рука,qí,друг,her,стол,its,тело,that,работа,their
+78,主,гость,сотня,host,глаз,zhǔ,дело,lord,матрос,master
+78,理,сотня,карниз,reason,ложь,lǐ,улыбка,logic,минута,manage
+78,心,карниз,автор,heart,нога,xīn,народ,mind,слово,soul
+78,只,автор,воин,only,союз,zhǐ,свет,just,импульс,simply
+78,实,воин,гость,real,стол,shí,труба,true,сторона,honest,рисунок,sincere
 79,者,минута,фигура,he who,глаз,zhě,тысяча,that which,бульдозер,those who
 79,力,фигура,право,power,ложь,lì,журналист,influence,проклятие,capability
 79,把,право,долг,hold,брат,bǎ,трек,take,дверь,guard,издержки,regard as

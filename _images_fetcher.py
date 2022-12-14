@@ -24,11 +24,9 @@ pools["architecture"] = "1468642@N24"
 pools["lonecity"] = "91283770@N00"
 pools["pure_landscaped"] = "1191681@N23"
 pools["empty_houses"] = "51594024@N00"
-pools["parks"] = "72717767@N00"
-pools["vanishing"] = "55475894@N00"
 flickr_crawler = FlickrImageCrawler(FLICKR_KEY,
-                            storage={'root_dir': os.path.join(os.getcwd(), "images_6_byhand_to_delete")})
-flickr_crawler.crawl(max_num=5000, group_id=pools["vanishing"], file_idx_offset=0)
+                            storage={'root_dir': os.path.join(os.getcwd(), "images4")})
+flickr_crawler.crawl(max_num=1000, group_id=pools["empty_houses"], file_idx_offset=2000)
 exit()
 
 #with open(os.path.join(os.getcwd(), "datasets", "cities_list.csv")) as sources_file:
