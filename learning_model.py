@@ -152,6 +152,11 @@ class ChainedFeature():
     def get_resulting_candles(self):
         return self.candles[STAKE_PART:]
 
+    def get_candles_with_offset(self, offset_a, offset_b):
+        print(offset_a)
+        print(offset_a+offset_b)
+        return self.candles[offset_a:offset_a+offset_b]
+
     def get_all_candles(self):
         return self.candles
 
@@ -162,9 +167,6 @@ class ChainedFeature():
     def register_progress(self, is_solved = False):
         timing = self.basic_timing_per_level[self.progression_level]
         level = self.progression_level
-        print(self.source)
-        print("start point ", self.start_point)
-        print("solved feedback ", is_solved)
         if is_solved:
             self.basic_timing_per_level[self.progression_level] = timing +4 if timing < 40 else 40 
             self.progression_level = level + 1 if level < 2 else 2 
@@ -220,8 +222,6 @@ class FeaturesChain():
         level = self.features[self.active_position].progression_level
         is_fallback = self.features[self.active_position].decreased
         is_up = self.features[self.active_position].rised
-        print("current level ", level)
-        print("is up ", is_up)
         # two main factors are card chain level and
         # the way level was acheived - by recall or by forgetting some
         if level == 0 and is_fallback:
@@ -259,6 +259,7 @@ class ChainedModel():
         self.chains = chains
         self.active_chain_index = 0
         self.old_limit = 2
+        self.new_limit = 2
         self.is_changed = False
 
         is_restored = self.restore_results(PROGRESSION_FILE)
@@ -280,7 +281,9 @@ class ChainedModel():
             self.chains.sort(key = lambda _ : _.progression_level + _.recall_level * 0.25)
         else:
             self.chains.sort(key = lambda _ : _.progression_level)
-            self.old_limit = 2
+            if not self.new_limit:
+                self.old_limit = 2
+                self.new_limit = 2
         self.dump_results(PROGRESSION_FILE)
 
     def change_active_chain(self):
@@ -289,6 +292,8 @@ class ChainedModel():
         self.active_chain = self.chains[0]
         if self.active_chain.recall_level < 0:
             self.old_limit -= 1
+        else:
+            self.new_limit -= 1
         self.active_chain.recall_level = 0
 
     def get_options_list(self, sample):

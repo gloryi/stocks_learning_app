@@ -28,5 +28,5 @@ col_bt_pressed = hex_to_rgb("#4E52AF")
 col_bt_down    = hex_to_rgb("#1D1313")
 col_bt_text = hex_to_rgb("#FFFFFF")
 
-dark_green = hex_to_rgb("#023020")
-dark_red = hex_to_rgb("#560d0d")
+dark_green = hex_to_rgb("#008F30")
+dark_red = hex_to_rgb("#F50600")

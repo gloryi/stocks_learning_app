@@ -103,6 +103,7 @@ class ChainedEntity():
         self.entry = None
         self.sl = None
         self.tp = None
+        self.idle_coursor = None
         self.entry_activated = None
         self.stop_activated = None
         self.profit_activated = None
@@ -111,6 +112,7 @@ class ChainedEntity():
         self.variation_on_rise = True
 
         self.question_index = VISUAL_PART
+        self.active_index = 0
 
         self.options = None
         self.active_question = None
@@ -174,7 +176,8 @@ class ChainedEntity():
 
         if self.mode == "QUESTION":
             self.mode = "SHOW"
-            self.question_index = VISUAL_PART - STAKE_PART
+            self.question_index = VISUAL_PART - self.active_index
+
         elif self.mode == "SHOW":
             self.mode = "DONE"
 
@@ -208,9 +211,16 @@ class ChainedEntity():
 
         self.generate_options()
 
+    def tick(self, time_passed, time_limit):
+        active_position = int(time_passed/time_limit*STAKE_PART)
+        self.active_index = active_position
+        if self.mode == "SHOW":
+            self.question_index = VISUAL_PART - self.active_index 
+
     def register_keys(self, key_states, time_percent, time_based = False):
         if time_based:
             self.variate()
+
         if self.active_question and not time_based:
             self.time_perce_reserved = time_percent
             for i, key in enumerate(key_states):
@@ -250,6 +260,10 @@ class ChainedEntity():
                 reward = risk * 3
                 self.tp = self.entry + reward
 
+    def register_idle_mouse(self):
+            mouse_position = self.pygame_instance.mouse.get_pos()
+            self.idle_coursor = self.question_pxls_to_price(mouse_position[1])
+
     def get_sltp(self):
         return self.entry, self.sl, self.tp
 
@@ -272,7 +286,8 @@ class ChainedEntity():
         if self.mode == "QUESTION":
             return self.chained_feature.get_question_candles()
         else:
-            return self.chained_feature.get_resulting_candles()
+            return self.chained_feature.get_candles_with_offset(self.active_index, VISUAL_PART)
+                                                                 
 
     def variate(self):
         if self.variation_on_rise:
@@ -423,23 +438,22 @@ class ChainedDrawer():
             return tuple(int(hx[i:i+2], 16) for i in (0, 2, 4))
 
         def getCandleCol(candle, v_rising = False):
-            col = "#FFFFFF"
+            rgb_col = colors.white 
 
             if candle.green:
-                col = "#5F7942"
+                rgb_col = colors.dark_green
             elif candle.red:
-                col = "#FA7072"
+                rgb_col = colors.dark_red 
 
-            rgb_col = hex_to_bgr(col)
             clip_color = lambda _ : 0 if _ <=0 else 255 if _ >=255 else int(_)
             if candle.green:
                 rgb_col = (clip_color(rgb_col[0]-2*line.variation),
                            clip_color(rgb_col[1]),
-                           clip_color(rgb_col[2]-2*line.variation))
+                           clip_color(rgb_col[2]))
             else:
                 rgb_col = (clip_color(rgb_col[0]),
                            clip_color(rgb_col[1]+2*line.variation),
-                           clip_color(rgb_col[2]+2*line.variation))
+                           clip_color(rgb_col[2]))
 
 
             return rgb_col 
@@ -451,7 +465,7 @@ class ChainedDrawer():
         def drawCandle( zone, candle, minP,
                        maxP,
                        p1,
-                       p2, entry = None, stop = None, profit = None, v_rising = False, last = False):
+                       p2, entry = None, stop = None, profit = None, idle = None, v_rising = False, last = False):
             i = candle.index - p1
             col = getCandleCol(candle, v_rising)
             _o,_c,_h,_l = candle.ochl()
@@ -463,18 +477,27 @@ class ChainedDrawer():
             
 
             if last:
-                drawLineInZone( zone, 1-oline,(i+0.5-0.3)/depth,1-oline,(i+0.5+0.3)/depth,col,thickness=5)
+                drawLineInZone( zone, 1-oline,(i+0.5-0.4)/depth,1-oline,(i+0.5+0.4)/depth,col,thickness=5)
                 return
 
             candle_len = hwick - lwick
+            candle_mid = (_h+_l)/2 
+            body_mid = (_o+_c)/2
+            candle_center = fitTozone(candle_mid, minP, maxP)
+            body_mid_zone = fitTozone(body_mid, minP, maxP)
 
             if entry and entry >_l and entry < _h:
-                drawSquareInZone( zone, 1-hwick-candle_len/6,(i+0.5-0.55)/depth,1-lwick+candle_len/6,(i+0.5+0.55)/depth,(colors.col_bt_pressed))
+                h_position, l_position = (1-hwick-candle_len//8, 1-body_mid_zone) if entry > body_mid else (1-body_mid_zone, 1-lwick+candle_len//8)
+                drawSquareInZone( zone, h_position,(i+0.5-0.55)/depth,l_position,(i+0.5+0.55)/depth,(colors.col_bg_darker))
             elif stop and stop > _l and stop < _h:
-                drawSquareInZone( zone, 1-hwick-candle_len/6,(i+0.5-0.55)/depth,1-lwick+candle_len/6,(i+0.5+0.55)/depth,(colors.col_wicked_darker))
+                h_position, l_position = (1-hwick-candle_len//8, 1-body_mid_zone) if stop > body_mid else (1-body_mid_zone, 1-lwick+candle_len//8)
+                drawSquareInZone( zone, h_position,(i+0.5-0.55)/depth,l_position,(i+0.5+0.55)/depth,(colors.col_black))
             elif profit and profit > _l and profit < _h:
-                drawSquareInZone( zone, 1-hwick-candle_len/6,(i+0.5-0.55)/depth,1-lwick+candle_len/6,(i+0.5+0.55)/depth,(colors.col_bg_lighter))
-
+                h_position, l_position = (1-hwick-candle_len//8, 1-body_mid_zone) if profit > body_mid else (1-body_mid_zone, 1-lwick+candle_len//8)
+                drawSquareInZone( zone, h_position,(i+0.5-0.55)/depth,l_position,(i+0.5+0.55)/depth,(colors.col_bt_pressed))
+            elif idle and idle > _l and idle < _h:
+                h_position, l_position = (1-hwick-candle_len//8, 1-body_mid_zone) if idle > body_mid else (1-body_mid_zone, 1-lwick+candle_len//8)
+                drawSquareInZone( zone, h_position,(i+0.5-0.55)/depth,l_position,(i+0.5+0.55)/depth,(colors.col_wicked_darker))
             #else:
                 #drawSquareInZone( zone, 1-hwick-candle_len/6,(i+0.5-0.55)/depth,1-lwick+candle_len/6,(i+0.5+0.55)/depth,(colors.col_bt_down))
 
@@ -496,21 +519,27 @@ class ChainedDrawer():
             if candle.initial:
                 drawLineInZone( zone, 1,(i+0.5)/depth,0,(i+0.5)/depth,col,thickness=3)
 
-        def drawCandles(line, candles, zone, minV, maxV, p1, p2, entry=None, stop=None, profit=None):
+        def drawCandles(line, candles, zone, minV, maxV, p1, p2, entry=None, stop=None, profit=None, idle = None):
 
             prev_v = candles[0].v
 
             for i, candle in enumerate(candles):
                 if i == line.question_index-1:
-                    drawLineInZone( zone, 1,(i+0.5)/len(candles),0,(i+0.5)/len(candles),(50,50,0), thickness = 3)
+                    drawLineInZone( zone, 1,(i+0.5)/len(candles),0,(i+0.5)/len(candles),(50,50,0), thickness = 4)
                 v_rising = candle.v > prev_v
                 prev_v = candle.v
                 last = i == len(candles)-1
-                drawCandle(zone, candle, minV, maxV, p1, p2, entry=entry, stop=stop, profit=profit, v_rising = v_rising, last = last)
+                drawCandle(zone, candle, minV, maxV, p1, p2, entry=entry, stop=stop, profit=profit, idle=idle, v_rising = v_rising, last = last)
 
         def drawSLTP(H, W, minV, maxV, zone,
-                     entry = None, stop = None, profit = None,
+                     entry = None, stop = None, profit = None, idle = None,
                      entry_activated = False, stop_activated = False, profit_activated = False):
+
+            if idle:
+                line_level = fitTozone(idle, minV, maxV)
+                drawLineInZone( zone, 1-line_level,0,1-line_level,1,
+                               colors.col_wicked_darker, thickness = 2)
+
             if entry:
                 line_level = fitTozone(entry, minV, maxV)
                 if not entry_activated:
@@ -552,6 +581,8 @@ class ChainedDrawer():
         firstSquare  = [0,  0, H, W]
         minV, maxV = self.minMaxOfZone(candles)
         entry, stop, profit = line.get_sltp()
+        idle = line.idle_coursor
+
         entry_activated =  line.entry_activated
         stop_activated = line.stop_activated
         profit_activated = line.profit_activated
@@ -569,13 +600,13 @@ class ChainedDrawer():
             p2 = candles[-1].index
 
             minV, maxV = self.minMaxOfZone(candles)
-            drawCandles(line, candles, zone, minV, maxV, p1, p2, entry=entry, stop=stop, profit=profit)
+            drawCandles(line, candles, zone, minV, maxV, p1, p2, entry=entry, stop=stop, profit=profit, idle=idle)
 
         drawSLTP(H, W, minV, maxV,
                  firstSquare, entry=entry, stop=stop, profit=profit,
                  entry_activated=entry_activated,
                  stop_activated=stop_activated,
-                 profit_activated=profit_activated)
+                 profit_activated=profit_activated, idle = idle)
 
  
             
@@ -661,7 +692,8 @@ class ChainedProcessor():
             self.ui_ref.meta_text = ""
             self.ui_ref.global_progress = self.producer.chains.get_chains_progression()
 
-        #if self.active_entity.mode == "SHOW":
+        if self.active_entity.mode == "SHOW":
+            self.time_elapsed_cummulative = 0
             #self.ui_ref.meta_text = self.producer.produce_meta()
 
         if self.active_entity.mode == "DONE":
@@ -719,11 +751,16 @@ class ChainedProcessor():
         pressed_mouse = self.pygame_instance.mouse.get_pressed()
         if self.active_entity and any(pressed_mouse):
             self.active_entity.register_mouse(pressed_mouse)
+        elif self.active_entity:
+            self.active_entity.register_idle_mouse()
 
 
     def tick(self, beat_time, time_elapsed):
 
         self.time_elapsed_cummulative += time_elapsed
+         
+        if self.active_entity:
+            self.active_entity.tick(self.time_elapsed_cummulative, self.active_beat_time)
 
         self.process_inputs(time_elapsed)
         self.redraw()

@@ -3,10 +3,10 @@ from time_utils import global_timer, Counter, Progression
 
 #from six_words_mode import SixtletsProcessor
 from feature_chain_mode import ChainedProcessor
-from feature_chain_mode_semantic import ChainedProcessor as ChainedProcessorS
+#from feature_chain_mode_semantic import ChainedProcessor as ChainedProcessorS
 
 from config import STOCKS_DATA, W, H, BPM, CYRILLIC_FONT
-from config_semantic import TEST_LANG_DATA
+#from config_semantic import TEST_LANG_DATA
 
 from colors import white
 import colors
@@ -14,7 +14,7 @@ import time
 import random
 
 from ui_elements import UpperLayout
-from ui_elements_semantic import UpperLayout as UpperLayoutS
+#from ui_elements_semantic import UpperLayout as UpperLayoutS
  
 pygame.init()
 display_surface = pygame.display.set_mode((W, H))
@@ -28,14 +28,14 @@ is_pause_displayed = False
 delta_timer = global_timer(pygame)
 
 upper_stats = UpperLayout(pygame, display_surface)
-upper_stats_s = UpperLayoutS(pygame, display_surface)
+#upper_stats_s = UpperLayoutS(pygame, display_surface)
 
 new_line_counter = Counter(upper_stats)
 pause_counter = Counter(bpm = 1/5)
 
 game = ChainedProcessor(pygame, display_surface, upper_stats, "hanzi chineese", STOCKS_DATA,
                         (60*1000)/BPM)
-game_s = ChainedProcessorS(pygame, display_surface, upper_stats_s, "hanzi chineese", TEST_LANG_DATA, (60*1000)/BPM)
+#game_s = ChainedProcessorS(pygame, display_surface, upper_stats_s, "hanzi chineese", TEST_LANG_DATA, (60*1000)/BPM)
 
 
 progression = Progression(new_line_counter,
@@ -45,6 +45,7 @@ beat_time = new_line_counter.drop_time
 
 font = pygame.font.Font(CYRILLIC_FONT, 200, bold = True)
 pygame.event.set_allowed([pygame.QUIT, pygame.KEYDOWN, pygame.KEYUP])
+pygame.mouse.set_visible(False)
 fpsClock = pygame.time.Clock()
 
 mode = "STOCKS"
