@@ -711,7 +711,7 @@ class ChainedProcessor():
 
         line_swapped = self.producer.is_changed
 
-        return self.active_entity.time_estemated, line_swapped 
+        return self.active_entity.time_estemated, line_swapped, self.producer.produce_meta()
 
 
     def redraw(self):

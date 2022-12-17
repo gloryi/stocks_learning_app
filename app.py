@@ -52,6 +52,21 @@ mode = "STOCKS"
 active_game = game
 active_stats = upper_stats
 swap = False
+meta = ""
+
+base_font = pygame.font.match_font("setofont")
+base_font = pygame.font.Font(base_font, 50)
+    
+def place_text(text, x, y, transparent = False, renderer = None, base_col = (80,80,80)):
+    if renderer is None:
+        renderer = base_font 
+    if not transparent:
+        text = renderer.render(text, True, base_col, (150,150,151))
+    else:
+        text = renderer.render(text, True, base_col)
+    textRect = text.get_rect()
+    textRect.center = (x, y)
+    display_surface.blit(text, textRect)
 
  
 for time_delta in delta_timer:
@@ -59,18 +74,6 @@ for time_delta in delta_timer:
 
     if swap:
         swap = False
-        #if mode == "STOCKS":
-            #mode = "SEMANTIC"
-            #active_game = game_s
-            #active_stats = upper_stats_s
-            #display_surface.fill(white)
-            #pygame.display.update()
-        #elif mode == "SEMANTIC":
-            #mode = "STOCKS"
-            #active_game = game
-            #active_stats = upper_stats
-            #display_surface.fill(white)
-            #pygame.display.update()
 
     if paused and not is_pause_displayed:
         display_surface.fill(white)
@@ -78,6 +81,15 @@ for time_delta in delta_timer:
         textRect = text.get_rect()
         textRect.center = (W//2, H//2)
         display_surface.blit(text, textRect)
+        if meta:
+            chunks = [meta[i:i+80] for i in range(0, len(meta), 80)]
+            for i, chunk in enumerate(chunks):
+                place_text(chunk,
+                            W//2,
+                            H//2+70 + 40*(i+1),
+                            transparent = False,
+                            renderer = None,
+                            base_col = (colors.col_bt_pressed))
         is_pause_displayed = True
 
     if paused:
@@ -100,7 +112,7 @@ for time_delta in delta_timer:
         paused = True
 
     if new_line_counter.is_tick(time_delta):
-        next_tick_time, swap = active_game.add_line()
+        next_tick_time, swap, meta = active_game.add_line()
         new_line_counter.modify_bpm(next_tick_time)
 
 
