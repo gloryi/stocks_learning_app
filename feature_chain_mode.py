@@ -212,8 +212,10 @@ class ChainedEntity():
         self.generate_options()
 
     def tick(self, time_passed, time_limit):
+        self.variate()
         active_position = int(time_passed/time_limit*STAKE_PART)
         self.active_index = active_position
+        self.active_index_float = time_passed/time_limit*STAKE_PART
         if self.mode == "SHOW":
             self.question_index = VISUAL_PART - self.active_index 
 
@@ -261,8 +263,12 @@ class ChainedEntity():
                 self.tp = self.entry + reward
 
     def register_idle_mouse(self):
-            mouse_position = self.pygame_instance.mouse.get_pos()
-            self.idle_coursor = self.question_pxls_to_price(mouse_position[1])
+        if self.mode == "QUESTION":
+                mouse_position = self.pygame_instance.mouse.get_pos()
+                self.idle_coursor = self.question_pxls_to_price(mouse_position[1])
+        else:
+            self.idle_coursor = self.question_pxls_to_price(int(H/STAKE_PART)*self.active_index_float)
+
 
     def get_sltp(self):
         return self.entry, self.sl, self.tp
@@ -295,9 +301,9 @@ class ChainedEntity():
         else:
             self.variation -= 1
 
-        if self.variation > 10:
+        if self.variation > 40:
             self.variation_on_rise = False
-        elif self.variation < -10:
+        elif self.variation < -40:
             self.variation_on_rise = True
 
 
@@ -401,7 +407,7 @@ class ChainedDrawer():
     def generateOCHLPicture(self, line):
 
 
-        def drawSquareInZone(zone ,x1,y1,x2,y2, col):
+        def drawSquareInZone(zone ,x1,y1,x2,y2, col, width=0):
             try:
                 X = zone[0]
                 Y = zone[1]
@@ -414,7 +420,20 @@ class ChainedDrawer():
                 X1, X2 = min(X1, X2), max(X1, X2)
                 Y1, Y2 = min(Y1, Y2), max(Y1, Y2)
                 self.pygame_instance.draw.rect(self.display_instance,col,
-                                               (Y1,X1,(Y2-Y1),(X2-X1)))
+                                               (Y1,X1,(Y2-Y1),(X2-X1)), width = width)
+            except Exception as e:
+                pass
+
+        def drawCircleInZone(zone ,x1,y1,r,col, width=0):
+            try:
+                X = zone[0]
+                Y = zone[1]
+                dx = zone[2] - X
+                dy = zone[3] - Y
+                X1 = int(X + dx*x1)
+                Y1 = int(Y + dy*y1)
+                self.pygame_instance.draw.circle(self.display_instance,col,
+                                               (Y1,X1),r, width = width)
             except Exception as e:
                 pass
 
@@ -437,24 +456,38 @@ class ChainedDrawer():
             hx = hx.lstrip('#')
             return tuple(int(hx[i:i+2], 16) for i in (0, 2, 4))
 
-        def getCandleCol(candle, v_rising = False):
+        def getCandleCol(candle, v_rising = False, opposite_blend = False):
+
+            base_line_color = colors.col_wicked_darker 
+            inter_color = lambda v1, v2, p: v1 + (v2-v1)*p
+            interpolate = lambda col1, col2, percent: (inter_color(col1[0], col2[0], percent),
+                                                       inter_color(col1[1], col2[1], percent),
+                                                       inter_color(col1[2], col2[2], percent))
             rgb_col = colors.white 
 
             if candle.green:
-                rgb_col = colors.dark_green
+                if not opposite_blend:
+                    rgb_col = interpolate(colors.green2, colors.green1, abs(line.variation/40))
+                else:
+                    rgb_col = interpolate(colors.mid_color,colors.green2, abs(line.variation/40))
+
             elif candle.red:
                 rgb_col = colors.dark_red 
+                if not opposite_blend:
+                    rgb_col = interpolate(colors.red1, colors.red2, abs(line.variation/40))
+                else:
+                    rgb_col = interpolate(colors.mid_color, colors.red1, abs(line.variation/40))
 
             clip_color = lambda _ : 0 if _ <=0 else 255 if _ >=255 else int(_)
+
             if candle.green:
-                rgb_col = (clip_color(rgb_col[0]-2*line.variation),
+                rgb_col = (clip_color(rgb_col[0]),
                            clip_color(rgb_col[1]),
                            clip_color(rgb_col[2]))
             else:
                 rgb_col = (clip_color(rgb_col[0]),
-                           clip_color(rgb_col[1]+2*line.variation),
+                           clip_color(rgb_col[1]),
                            clip_color(rgb_col[2]))
-
 
             return rgb_col 
 
@@ -467,7 +500,11 @@ class ChainedDrawer():
                        p1,
                        p2, entry = None, stop = None, profit = None, idle = None, v_rising = False, last = False):
             i = candle.index - p1
-            col = getCandleCol(candle, v_rising)
+            if line.variation <= 0 and candle.ha and candle.green != candle.ha.green:
+                col = getCandleCol(candle.ha, v_rising, opposite_blend=True)
+            else:
+                col = getCandleCol(candle, v_rising)
+
             _o,_c,_h,_l = candle.ochl()
 
             oline = fitTozone(_o, minP, maxP)
@@ -475,11 +512,6 @@ class ChainedDrawer():
             lwick = fitTozone(_l, minP, maxP)
             hwick = fitTozone(_h, minP, maxP)
             
-
-            if last:
-                drawLineInZone( zone, 1-oline,(i+0.5-0.4)/depth,1-oline,(i+0.5+0.4)/depth,col,thickness=5)
-                return
-
             candle_len = hwick - lwick
             candle_mid = (_h+_l)/2 
             body_mid = (_o+_c)/2
@@ -498,26 +530,117 @@ class ChainedDrawer():
             elif idle and idle > _l and idle < _h:
                 h_position, l_position = (1-hwick-candle_len//8, 1-body_mid_zone) if idle > body_mid else (1-body_mid_zone, 1-lwick+candle_len//8)
                 drawSquareInZone( zone, h_position,(i+0.5-0.55)/depth,l_position,(i+0.5+0.55)/depth,(colors.col_wicked_darker))
-            #else:
-                #drawSquareInZone( zone, 1-hwick-candle_len/6,(i+0.5-0.55)/depth,1-lwick+candle_len/6,(i+0.5+0.55)/depth,(colors.col_bt_down))
 
-            drawLineInZone( zone, 1-lwick,(i+0.5)/depth,1-hwick,(i+0.5)/depth,col,thickness=3)
-            drawSquareInZone( zone, 1-cline,(i+0.5-0.3)/depth,1-oline,(i+0.5+0.3)/depth,col)
+            if line.variation >=0:
+                upper, lower = max(oline, cline), min(oline, cline)
 
-            if candle.long_entry:
-                eline = fitTozone(candle.entry_level, minP, maxP)
-                drawLineInZone( zone, 1-eline,(i+0.5-3)/depth,1-eline,1,(125,155,0), thickness = 10)
+                drawLineInZone( zone, 1-lwick,(i+0.5)/depth,1-lower,(i+0.5)/depth,col,thickness=3)
+                drawLineInZone( zone, 1-hwick,(i+0.5)/depth,1-lower,(i+0.5)/depth,col,thickness=3)
 
-            if candle.short_entry:
-                eline = fitTozone(candle.entry_level, minP, maxP)
-                drawLineInZone( zone, 1-eline,(i+0.5-5)/depth,1-eline,1,(24,0,150), thickness = 10)
+                drawSquareInZone( zone, 1-cline,(i+0.5-0.3)/depth,1-oline,(i+0.5+0.3)/depth,col, width = 0)
 
-            if candle.exit:
-                eline = fitTozone(candle.exit_level, minP, maxP)
-                drawLineInZone( zone, 1-eline,(i+0.5-5)/depth,1-eline,1,(200,0,0), thickness = 10)
+            else:
+                upper, lower = max(oline, cline), min(oline, cline)
+                thickness = 4 if candle.thick_lower else 2
+                drawLineInZone( zone, 1-lwick,(i+0.5)/depth,1-lower,(i+0.5)/depth,col,thickness=thickness)
+                thickness = 4 if candle.thick_upper else 2
+                drawLineInZone( zone, 1-hwick,(i+0.5)/depth,1-lower,(i+0.5)/depth,col,thickness=thickness)
 
-            if candle.initial:
-                drawLineInZone( zone, 1,(i+0.5)/depth,0,(i+0.5)/depth,col,thickness=3)
+                if candle.inner:
+                    drawLineInZone( zone, 1-cline,(i+0.5-0.3)/depth,1-oline,(i+0.5+0.3)/depth,col,thickness=3)
+                    drawLineInZone( zone, 1-cline,(i+0.5+0.3)/depth,1-oline,(i+0.5-0.3)/depth,col,thickness=3)
+                    drawLineInZone( zone, 1-cline,(i+0.5+0.3)/depth,1-cline,(i+0.5-0.3)/depth,col,thickness=3)
+                    drawLineInZone( zone, 1-oline,(i+0.5+0.3)/depth,1-oline,(i+0.5-0.3)/depth,col,thickness=3)
+
+                    drawLineInZone( zone, 1-(oline),(i+0.5)/depth,1-oline,(i-0.5+0.3)/depth,col,thickness=3)
+                    drawLineInZone( zone, 1-(cline),(i+0.5)/depth,1-cline,(i-0.5+0.3)/depth,col,thickness=3)
+                elif candle.pierce:
+                    upper_p = fitTozone(candle.upper_pierce_line, minP, maxP)
+                    lower_p = fitTozone(candle.lower_pierce_line, minP, maxP)
+                    upper_b = max(oline, cline)
+                    lower_b = min(oline, cline)
+                    drawSquareInZone( zone, 1-upper_b,(i+0.5-0.3)/depth,1-upper_p,(i+0.5+0.3)/depth,col, width = 0)
+                    drawSquareInZone( zone, 1-upper_p,(i+0.5)/depth,1-lower_p,(i+0.5+0.3)/depth,col, width = 0)
+                    mid_p = (upper_p + lower_p)/2
+                    drawLineInZone( zone, 1-(mid_p),(i-0.5+0.3)/depth,1-mid_p,(i+0.5+0.3)/depth,col,thickness=3)
+                    drawLineInZone( zone, 1-(upper_p),(i+0.5)/depth,1-upper_p,(i+0.5+0.5)/depth,col,thickness=3)
+                    drawLineInZone( zone, 1-(lower_p),(i+0.5)/depth,1-lower_p,(i+0.5+0.5)/depth,col,thickness=3)
+
+                    drawSquareInZone( zone, 1-lower_p,(i+0.5-0.3)/depth,1-lower_b,(i+0.5+0.3)/depth,col, width = 0)
+                # elif candle.conjoined:
+                #     #drawSquareInZone( zone, 1-cline,(i+0.5-0.5)/depth,1-oline,(i+0.5+0.5)/depth,col, width = 2)
+                #     for conjugate in candle.conjugates:
+                #         c1, c1w, c2, c2w = conjugate
+                #         c1 = fitTozone(c1, minP, maxP)
+                #         c1w = fitTozone(c1w, minP, maxP)
+                #         c2 = fitTozone(c2, minP, maxP)
+                #         c2w = fitTozone(c2w, minP, maxP)
+                #
+                #         drawLineInZone( zone, 1-c1,(i+0.5-0.3)/depth,1-c1,(i+0.5+0.3)/depth,col,thickness=3)
+                #         drawLineInZone( zone, 1-c2,(i+0.5-0.3)/depth,1-c2,(i+0.5+0.3)/depth,col,thickness=3)
+                else:
+                    mid_p = (cline + oline)/2
+                    drawSquareInZone( zone, 1-cline,(i+0.5-0.3)/depth,1-oline,(i+0.5+0.3)/depth,col, width = 0)
+                    drawLineInZone( zone, 1-(mid_p),(i+0.5-0.45)/depth,1-mid_p,(i+0.5+0.45)/depth,col,thickness=3)
+                    
+                if candle.weak_pierce_prev:
+                    drawLineInZone( zone, 1-lwick,(i+0.5)/depth,1-lwick,(i-0.5)/depth,col,thickness=3)
+                    drawLineInZone( zone, 1-hwick,(i+0.5)/depth,1-hwick,(i-0.5)/depth,col,thickness=3)
+
+                if candle.weak_pierce_next:
+                    drawLineInZone( zone, 1-lwick,(i+0.5)/depth,1-lwick,(i+1.5)/depth,col,thickness=3)
+                    drawLineInZone( zone, 1-hwick,(i+0.5)/depth,1-hwick,(i+1.5)/depth,col,thickness=3)
+
+                if candle.overhigh:
+                    drawLineInZone( zone, 1-hwick+0.5/depth-1/depth,(i+0.5+0.15)/depth,1-hwick-0.5/depth-1/depth,(i+0.5)/depth,col,thickness=3)
+                    drawLineInZone( zone, 1-hwick+0.5/depth-1/depth,(i+0.5-0.15)/depth,1-hwick-0.5/depth-1/depth,(i+0.5)/depth,col,thickness=3)
+                    #drawCircleInZone( zone, 1-hwick,(i+0.5)/depth,1/depth,col, width = 10)
+                if candle.overlow:
+                    drawLineInZone( zone, 1-lwick-0.5/depth+1/depth,(i+0.5+0.15)/depth,1-lwick+0.5/depth+1/depth,(i+0.5)/depth,col,thickness=3)
+                    drawLineInZone( zone, 1-lwick-0.5/depth+1/depth,(i+0.5-0.15)/depth,1-lwick+0.5/depth+1/depth,(i+0.5)/depth,col,thickness=3)
+                    # drawLineInZone( zone, 1-lwick-1/depth,(i+0.5)/depth,1-lwick,(i-0.5)/depth,col,thickness=3)
+                    # drawLineInZone( zone, 1-lwick+1/depth,(i+0.5)/depth,1-lwick,(i-0.5)/depth,col,thickness=3)
+                    #drawCircleInZone( zone, 1-lwick,(i+0.5)/depth,1/depth,col, width = 10)
+
+
+                if candle.joined:
+                    drawLineInZone( zone, 1-cline,(i+0.5-0.3)/depth,1-cline,(i+1.0+0.3)/depth,col,thickness=3)
+
+            if idle and (idle>=_l and idle<=_h or last):
+                line_level = fitTozone(idle, minP, maxP)
+                drawLineInZone( zone, 1-line_level,(i-2)/depth,1-line_level,(i+2)/depth,
+                               colors.col_wicked_darker, thickness = 2)
+
+            if entry and (entry>=_l and entry <=_h or last):
+                line_level = fitTozone(entry, minP, maxP)
+                if not entry_activated:
+                    drawLineInZone( zone, 1-line_level,
+                                   (i-2)/depth,1-line_level,(i+2)/depth,
+                                   (150,255,150), thickness = 2)
+                else:
+                    drawLineInZone( zone, 1-line_level,
+                                   (i-2)/depth,1-line_level,
+                                   (i+2)/depth,(150,255,150),
+                                   thickness = 5)
+            if stop and (stop>=_l and stop<=_h or last):
+                line_level = fitTozone(stop, minP, maxP)
+                if not stop_activated:
+                    drawLineInZone( zone,
+                                   1-line_level,(i-2)/depth,1-line_level,(i+2)/depth,
+                                   (255,150,150), thickness = 2)
+                else:
+                    drawLineInZone( zone, 1-line_level,(i-2)/depth,1-line_level,(i+2)/depth,
+                                   (255,150,150), thickness = 5)
+            if profit and (profit >=_l and profit<=_h or last):
+                line_level = fitTozone(profit, minP, maxP)
+                if not profit_activated:
+                    drawLineInZone( zone, 1-line_level,(i-2)/depth,1-line_level,(i+2)/depth,
+                                   (255,150,255), thickness = 2)
+                else:
+                    drawLineInZone( zone, 1-line_level,(i-2)/depth,1-line_level,(i+2)/depth,
+                                   (255,150,255), thickness = 5)
+
+
 
         def drawCandles(line, candles, zone, minV, maxV, p1, p2, entry=None, stop=None, profit=None, idle = None):
 
@@ -525,49 +648,11 @@ class ChainedDrawer():
 
             for i, candle in enumerate(candles):
                 if i == line.question_index-1:
-                    drawLineInZone( zone, 1,(i+0.5)/len(candles),0,(i+0.5)/len(candles),(50,50,0), thickness = 4)
+                    drawLineInZone( zone, 1,(i+0.5)/len(candles),0,(i+0.5)/len(candles),colors.col_bt_down, thickness = 6)
                 v_rising = candle.v > prev_v
                 prev_v = candle.v
                 last = i == len(candles)-1
                 drawCandle(zone, candle, minV, maxV, p1, p2, entry=entry, stop=stop, profit=profit, idle=idle, v_rising = v_rising, last = last)
-
-        def drawSLTP(H, W, minV, maxV, zone,
-                     entry = None, stop = None, profit = None, idle = None,
-                     entry_activated = False, stop_activated = False, profit_activated = False):
-
-            if idle:
-                line_level = fitTozone(idle, minV, maxV)
-                drawLineInZone( zone, 1-line_level,0,1-line_level,1,
-                               colors.col_wicked_darker, thickness = 2)
-
-            if entry:
-                line_level = fitTozone(entry, minV, maxV)
-                if not entry_activated:
-                    drawLineInZone( zone, 1-line_level,
-                                   0,1-line_level,1,
-                                   (150,255,150), thickness = 2)
-                else:
-                    drawLineInZone( zone, 1-line_level,
-                                   0,1-line_level,
-                                   1,(150,255,150),
-                                   thickness = 5)
-            if stop:
-                line_level = fitTozone(stop, minV, maxV)
-                if not stop_activated:
-                    drawLineInZone( zone,
-                                   1-line_level,0,1-line_level,1,
-                                   (255,150,150), thickness = 2)
-                else:
-                    drawLineInZone( zone, 1-line_level,0,1-line_level,1,
-                                   (255,150,150), thickness = 5)
-            if profit:
-                line_level = fitTozone(profit, minV, maxV)
-                if not profit_activated:
-                    drawLineInZone( zone, 1-line_level,0,1-line_level,1,
-                                   (255,150,255), thickness = 2)
-                else:
-                    drawLineInZone( zone, 1-line_level,0,1-line_level,1,
-                                   (255,150,255), thickness = 5)
 
 
         candles = line.produce_candles()
@@ -602,11 +687,11 @@ class ChainedDrawer():
             minV, maxV = self.minMaxOfZone(candles)
             drawCandles(line, candles, zone, minV, maxV, p1, p2, entry=entry, stop=stop, profit=profit, idle=idle)
 
-        drawSLTP(H, W, minV, maxV,
-                 firstSquare, entry=entry, stop=stop, profit=profit,
-                 entry_activated=entry_activated,
-                 stop_activated=stop_activated,
-                 profit_activated=profit_activated, idle = idle)
+        #drawSLTP(H, W, minV, maxV,
+                 #firstSquare, entry=entry, stop=stop, profit=profit,
+                 #entry_activated=entry_activated,
+                 #stop_activated=stop_activated,
+                 #profit_activated=profit_activated, idle = idle)
 
  
             

@@ -6,6 +6,7 @@ from config import PROGRESSION_FILE, IMAGES_MAPPING_FILE, VISUAL_PART, STAKE_PAR
 
 knwon_prices = {}
 
+
 class simpleCandle():
     def __init__(self, o, c, h, l, v, index = 0):
         self.o = o
@@ -13,22 +14,40 @@ class simpleCandle():
         self.h = h
         self.l = l
         self.v = v
+        self.ha = []
+
         self.green = self.c >= self.o
         self.red = self.c < self.o
-        self.long_entry = False
-        self.short_entry = False
-        self.exit = False
-        self.entry_level = 0
-        self.exit_level = 0
         self.last = False
         self.vRising = False
         self.index = index
-        self.best_entry = False
-        self.best_exit = False
-        self.initial = False
+
+        self.joined = False
+        self.inner = False
+        self.pierce = False
+        self.conjoined = False
+        self.doji = False
+        self.overhigh = False
+        self.overlow = False
+        self.conjugates = []
+        self.weak_pierce_prev = False
+        self.weak_pierce_next = False
+        self.upper_pierce_line = max(self.o, self.c)
+        self.lower_pierce_line = min(self.o, self.c)
+
+        self.thick_upper = False
+        self.thick_lower = False
 
     def ochl(self):
         return self.o, self.c, self.h, self.l
+
+def calculateHA(prev, current, index):
+    hC = (current.o + current.c + current.h + current.l)/4
+    hO = (prev.o + prev.c)/2
+    hH = max(current.o, current.h, current.c)
+    hL = min(current.o, current.h, current.c)
+    hV = current.v
+    return simpleCandle(hO, hC, hH, hL, hV, index)
 
 def extract_ochlv(filepath):
     O, C, H, L, V = [], [], [], [], []
@@ -49,9 +68,12 @@ def fetch_prices(asset_name):
     knwon_prices[asset_name] = [simpleCandle(o,c,h,l,v,i) for i, (o,c,h,l,v) in enumerate(zip(O,C,H,L,V))]
 
 def get_candles(asset_name, index):
+
     if asset_name not in knwon_prices:
         fetch_prices(asset_name)
-    return knwon_prices[asset_name][int(index):int(index)+VISUAL_PART+STAKE_PART] 
+
+    for candle in knwon_prices[asset_name][int(index):]:
+        yield candle
 
 class ChainUnitType():
     type_key = "type_key"
@@ -90,19 +112,99 @@ class ChainUnit():
         self.extra = extra
 
 class ChainedFeature():
-    def __init__(self, source, start_point): 
+    def __init__(self, source, start_point):
 
         self.source = source
         self.start_point = start_point
-        self.candles = get_candles(self.source, self.start_point)
+        self.candles = self.pre_process_candles()
 
         self.progression_level = 0
         self.decreased = False
         self.rised = False
-        self.attached_image = "" 
+        self.attached_image = ""
         self.basic_timing_per_level = {0:30,
                                        1:30,
                                        2:30}
+    def pre_process_candles(self):
+        candles_generator = get_candles(self.source, self.start_point)
+        candles = []
+        index_shift = 0
+        for candle in candles_generator:
+            candle.index -= index_shift
+
+            if len(candles) >= VISUAL_PART + STAKE_PART:
+                break
+
+            if candles and len(candles) < VISUAL_PART:
+
+                candles[-1].ha = calculateHA(candles[-1], candle, candle.index)
+
+                upper_next, lower_next = max(candle.o, candle.c), min(candle.o, candle.c)
+                upper_prev, lower_prev = max(candles[-1].o, candles[-1].c), min(candles[-1].o, candles[-1].c)
+
+                if candle.h - upper_next > lower_next - candle.l:
+                    candle.thick_upper = True
+                elif candle.h - upper_next < lower_next - candle.l:
+                    candle.thick_lower = True
+                
+
+                if candle.red and upper_next == lower_prev:
+                    candles[-1].joined = True
+
+                if candle.green and upper_prev == lower_next:
+                    candles[-1].joined = True
+                
+                if candles[-1].h > candle.h and candles[-1].l < candle.l:
+                    candles[-1].weak_pierce_next = True
+
+                if candle.h > candles[-1].h and candle.l < candles[-1].l:
+                    candle.weak_pierce_prev = True
+
+                elif candle.h > candles[-1].h:
+                    candle.overhigh = True
+
+                elif candle.l < candles[-1].l:
+                    candle.overlow = True
+
+                # same_color = candle.red == candles[-1].red and candle.green == candles[-1].green
+                # if same_color and candle.red and candle.h < upper_prev and candles[-1].l > lower_next:
+                #     candles[-1].o = candles[-1].o
+                #     candles[-1].c = candle.c
+                #     candles[-1].h = candles[-1].h
+                #     candles[-1].l = candle.l
+                #     index_shift += 1
+                #     candles[-1].conjoined = True
+                #     candles[-1].conjugates.append([lower_prev, candles[-1].l,
+                #                                    upper_next, candle.h ])
+                #     continue
+                #
+                # if same_color and candle.green and candles[-1].h < upper_next and candle.l > lower_prev:
+                #     candles[-1].o = candles[-1].o
+                #     candles[-1].c = candle.c
+                #     candles[-1].h = candle.h
+                #     candles[-1].l = candles[-1].l
+                #     index_shift += 1
+                #     candles[-1].conjoined = True
+                #     candles[-1].conjugates.append([upper_prev, candles[-1].h,
+                #                                    lower_next, candle.l])
+                #     continue
+
+                if candle.o == candle.c:
+                    candle.doji = True
+                
+                if upper_next <= upper_prev and lower_next >= lower_prev:
+                    candle.inner = True
+                
+                if upper_prev <= upper_next and lower_prev >= lower_next:
+                    candle.pierce = True
+                    candle.upper_pierce_line = max(candles[-1].o, candles[-1].c)
+                    candle.lower_pierce_line = min(candles[-1].o, candles[-1].c)
+
+
+                    
+            candles.append(candle)
+
+        return candles
 
     def set_mode(self, unit_type):
         if self.progression_level == 0:
@@ -153,8 +255,6 @@ class ChainedFeature():
         return self.candles[STAKE_PART:]
 
     def get_candles_with_offset(self, offset_a, offset_b):
-        print(offset_a)
-        print(offset_a+offset_b)
         return self.candles[offset_a:offset_a+offset_b]
 
     def get_all_candles(self):
@@ -168,13 +268,13 @@ class ChainedFeature():
         timing = self.basic_timing_per_level[self.progression_level]
         level = self.progression_level
         if is_solved:
-            self.basic_timing_per_level[self.progression_level] = timing +4 if timing < 40 else 40 
-            self.progression_level = level + 1 if level < 2 else 2 
+            self.basic_timing_per_level[self.progression_level] = timing +4 if timing < 40 else 40
+            self.progression_level = level + 1 if level < 2 else 2
             self.rised = True
             self.decreased = False
         else:
-            self.basic_timing_per_level[self.progression_level] = timing -4 if timing > 20 else 20 
-            self.progression_level = level -1 if level > 0 else 0 
+            self.basic_timing_per_level[self.progression_level] = timing -4 if timing > 20 else 20
+            self.progression_level = level -1 if level > 0 else 0
             self.decreased = True
             self.rised = False
 
@@ -232,7 +332,7 @@ class FeaturesChain():
             return self.features[self.active_position]
         if level == 2 and not is_up:
             return self.features[self.active_position]
-        
+
         self.features[self.active_position].deselect()
         self.active_position += 1
         self.active_changed = True

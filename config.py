@@ -7,8 +7,8 @@ CYRILLIC_FONT = os.path.join(os.getcwd(), "fonts", "Inter_font.ttf")
 META_SCRIPT = os.path.join(os.getcwd(), "trading_affirmations.csv")
 BPM = 10
 
-W = int(1400*1.18)
-H = int(800*1.18)
+W = int(1400*1.18+20)
+H = int(800*1.18+70)
 
-VISUAL_PART = 115
+VISUAL_PART = 140
 STAKE_PART = 15

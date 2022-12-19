@@ -30,3 +30,11 @@ col_bt_text = hex_to_rgb("#FFFFFF")
 
 dark_green = hex_to_rgb("#008F30")
 dark_red = hex_to_rgb("#F50600")
+
+red1 = hex_to_rgb("#DE045B")
+red2 = hex_to_rgb("#700F3C")
+
+green1 = hex_to_rgb("#44803F")
+green2 = hex_to_rgb("#146152")
+
+mid_color = hex_to_rgb("#FFCD39")
