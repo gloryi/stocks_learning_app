@@ -6,7 +6,6 @@ from config import PROGRESSION_FILE, IMAGES_MAPPING_FILE, VISUAL_PART, STAKE_PAR
 
 knwon_prices = {}
 
-
 class simpleCandle():
     def __init__(self, o, c, h, l, v, index = 0):
         self.o = o
@@ -34,6 +33,18 @@ class simpleCandle():
         self.weak_pierce_next = False
         self.upper_pierce_line = max(self.o, self.c)
         self.lower_pierce_line = min(self.o, self.c)
+
+        self.up_from_within = False
+        self.up_within_p1  = None
+        self.up_within_p2 = None
+
+        self.down_from_within = False
+        self.down_within_p1 = None
+        self.down_within_p2 = None
+        
+
+        self.to_offset = None
+        self.to_price = None
 
         self.thick_upper = False
         self.thick_lower = False
@@ -111,12 +122,25 @@ class ChainUnit():
         self.preferred_position = preferred_position
         self.extra = extra
 
+burn_keys = {}
+burn_keys["LONG"] = 0
+burn_keys["LONG P"] = 1
+burn_keys["SHORT P"] = 2
+burn_keys["SHORT"] = 3
+
 class ChainedFeature():
     def __init__(self, source, start_point):
 
         self.source = source
         self.start_point = start_point
         self.candles = self.pre_process_candles()
+
+        self.is_burning = False
+        self.burn_level = 0
+        self.burn_key = burn_keys["LONG"]
+        self.burn_ind = None
+
+        self.set_burn_answer()
 
         self.feature_errors = []
         self.cummulative_error = 0
@@ -131,6 +155,7 @@ class ChainedFeature():
         candles_generator = get_candles(self.source, self.start_point)
         candles = []
         index_shift = 0
+
         for candle in candles_generator:
             candle.index -= index_shift
 
@@ -180,14 +205,90 @@ class ChainedFeature():
                     candle.upper_pierce_line = max(candles[-1].o, candles[-1].c)
                     candle.lower_pierce_line = min(candles[-1].o, candles[-1].c)
 
+                if upper_next > upper_prev and lower_next > lower_prev and lower_next < upper_prev:
+                    candle.up_from_within = True
+                    candle.up_within_p1 = upper_prev
+                    candle.up_within_p2 = upper_next
+
+                if lower_next < lower_prev and upper_next < upper_prev and upper_next > lower_prev:
+                    candle.down_from_within = True
+                    candle.down_within_p1 = lower_prev
+                    candle.down_within_p2 = lower_next
+
+
 
                     
             candles.append(candle)
 
         return candles
 
+    def set_burn_answer(self):
+        decision_candle = self.candles[VISUAL_PART-1]
+
+        anchor = (decision_candle.c+decision_candle.o)/2
+        anchor_i = VISUAL_PART-1
+
+        min_low = anchor
+        min_low_i = VISUAL_PART-1
+        max_high = anchor
+        max_high_i = VISUAL_PART-1
+        
+        for i, candle in enumerate(self.candles[VISUAL_PART:]):
+            if candle.h > max_high:
+                max_high = candle.h
+                max_high_i = i + VISUAL_PART
+            elif candle.l < min_low:
+                min_low = candle.l
+                min_low_i = i + VISUAL_PART
+
+        low_range = anchor - min_low
+        high_range = max_high - anchor
+        low_first = min_low_i < max_high_i
+
+        if high_range > low_range and not low_first:
+            self.burn_key = burn_keys["LONG"] 
+            self.candles[VISUAL_PART-1].to_offset = (max_high_i - anchor_i)
+            self.candles[VISUAL_PART-1].to_price = max_high
+            self.burn_ind = VISUAL_PART-1
+
+        elif high_range > low_range and low_first:
+            self.burn_key = burn_keys["LONG P"] 
+            self.candles[min_low_i].to_offset = (max_high_i - min_low_i)
+            self.candles[min_low_i].to_price = max_high
+            self.burn_ind = min_low_i
+
+        elif low_range > high_range and not low_first:
+            self.burn_key = burn_keys["SHORT P"]
+            self.candles[max_high_i].to_offset = (min_low_i - max_high_i)
+            self.candles[max_high_i].to_price = min_low
+            self.burn_ind = max_high_i
+
+        else:
+            self.burn_key = burn_keys["SHORT"]
+            self.candles[VISUAL_PART-1].to_offset = (min_low_i - anchor_i)
+            self.candles[VISUAL_PART-1].to_price = min_low
+            self.burn_ind == VISUAL_PART-1
+
+
+
     def get_question_candles(self):
         return self.candles[:VISUAL_PART]
+
+    def set_burn_mode(self):
+        self.is_burning = True
+        self.burn_level = 0
+
+    def burn_one(self, positive = False):
+        if not positive:
+            self.burn_level -= 1
+            if self.burn_level < 0:
+                self.burn_level = 0
+        else:
+            self.burn_level += 1
+
+        if self.burn_level == 2:
+            self.burn_level = 0
+            self.is_burning = False
 
     def get_question_candles_minmax(self):
         min_price = min(self.candles[:VISUAL_PART], key = lambda _ : _.l).l
@@ -225,25 +326,9 @@ class ChainedFeature():
     def get_timing(self):
         return self.basic_timing_per_level[self.feature_level]
 
-
-    def get_context(self):
-       source = [ChainUnit(self.source, ChainUnitType.type_feature,
-                                 self.set_mode(ChainUnitType.type_feature),
-                                 ChainUnitType.position_keys, 0,
-                              preferred_position = "MAIN_FEATURE",
-                              extra = self.set_extra(ChainUnitType.type_feature))]
-
-       start_point = [ChainUnit(self.start_point, ChainUnitType.type_feature,
-                                 self.set_mode(ChainUnitType.type_feature),
-                                 ChainUnitType.position_keys, 0,
-                              preferred_position = "MAIN_FEATURE",
-                              extra = self.set_extra(ChainUnitType.type_feature))]
-       return source + start_point
-
-    def register_error(self, error_index):
-        if error_index < len(self.feature_errors):
-            self.feature_errors[error_index] += 1
-            self.cummulative_error += 1
+    def register_error(self):
+        self.feature_errors[0] += 1
+        self.cummulative_error += 1
 
     def decrease_errors(self):
         if self.cummulative_error > 1:
@@ -251,13 +336,10 @@ class ChainedFeature():
         else:
             self.cummulative_error = 0
 
-        for i in range(len(self.feature_errors)):
-            error = self.feature_errors[i]
-            if error > 1:
-                self.feature_errors[i]//=2
-            else:
-                self.feature_errors[i] = 0
-
+        if self.feature_errors[0] >1:
+            self.feature_errors[0] //= 2
+        else:
+            self.feature_errors[0] = 0
 
 
     def get_main_title(self):
@@ -289,7 +371,7 @@ class ChainedFeature():
         return len(self.keys)
 
     def __repr__(self):
-        return f"{self.source} | progress = {self.feature_level} | errors = {self.cummulative_error}"
+        return f"{self.source[-10:]}~{self.start_point} | progress = {self.feature_level} | errors = {self.cummulative_error} | burn = {self.burn_level}"
 
 
 class FeaturesChain():
@@ -381,7 +463,10 @@ class ChainedModel():
         self.new_limit = 2
         self.mistakes_trigger = False
         self.mistakes_chain = []
+
         self.burning_chain = []
+        self.burning_in_work = []
+        self.burning_size = 5
 
         is_restored = self.restore_results(PROGRESSION_FILE)
 
@@ -472,6 +557,14 @@ class ChainedModel():
         return options
 
     def get_next_feature(self):
+
+        self.set_burning_in_work()
+        if self.burning_in_work:
+            random.shuffle(self.burning_in_work)
+            if self.burning_in_work[-1].is_burning:
+                return self.burning_in_work[-1]
+            return self.burning_in_work.pop()
+
         next_feature = self.active_chain.get_next_feature()
         if not next_feature:
             self.change_active_chain()
@@ -479,15 +572,17 @@ class ChainedModel():
 
         if not next_feature.review and not next_feature in self.burning_chain:
             self.burning_chain.append(next_feature)
-            print(self.burning_chain)
 
         return next_feature
 
     def is_burning(self):
-        return len(self.burning_chain) == 30
+        return len(self.burning_chain) >= self.burning_size
 
-    def get_burning_features_list(self):
-        pass
+    def set_burning_in_work(self):
+        if self.is_burning():
+            self.burning_in_work, self.burning_chain = self.burning_chain[:self.burning_size], self.burning_chain[self.burning_size:]
+            for feature in self.burning_in_work:
+                feature.set_burn_mode()
 
     def dump_results(self, progression_file):
         backup = {}

@@ -156,10 +156,3 @@ class UpperLayout():
                                    0,
                                    250*3*self.percent,
                                    25))
-
-        self.pygame_instance.draw.rect(self.display_instance,
-                                  line_color,
-                                  ((320 + (250*3*(1-self.percent))/2)+150,
-                                   self.H-25,
-                                   250*3*self.percent,
-                                   25))

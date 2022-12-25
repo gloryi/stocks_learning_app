@@ -74,7 +74,6 @@ def place_text(text, x, y, transparent = False, renderer = None, base_col = (80,
     display_surface.blit(text, textRect)
 
  
-print("Game cycle started")
 for time_delta in delta_timer:
     fpsClock.tick(30)
 
