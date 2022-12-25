@@ -5,7 +5,7 @@ from math import sqrt
 from itertools import compress, groupby
 import random
 import re
-from config import W, H, CYRILLIC_FONT, CHINESE_FONT, VISUAL_PART, STAKE_PART, META_SCRIPT
+from config import W, H, CYRILLIC_FONT, CHINESE_FONT, VISUAL_PART, STAKE_PART, META_SCRIPT, META_MINOR
 from colors import col_bg_darker, col_wicked_darker
 from colors import col_active_darker, col_bg_lighter
 from colors import col_wicked_lighter, col_active_lighter
@@ -19,15 +19,16 @@ NEW_EVENT = False
 ######################################
 
 class ChainedsProducer():
-    def __init__(self, label, csv_path, meta_path = None, ui_ref = None):
+    def __init__(self, label, csv_path, meta_path = None, minor_meta = None, ui_ref = None):
         self.csv_path = csv_path
         self.label = label 
         self.meta_path = meta_path
+        self.minor_meta = minor_meta
         self.meta_lines = self.extract_meta(self.meta_path) if self.meta_path else []
+        self.minor_lines = self.extract_meta(self.minor_meta) if self.minor_meta else []
         self.chains = self.prepare_data()
         self.active_chain = self.chains.get_active_chain()
         self.ui_ref = ui_ref
-        self.is_changed = False
 
     def extract_meta(self, meta_path):
         meta = []
@@ -53,13 +54,18 @@ class ChainedsProducer():
 
     def produce_next_feature(self):
         next_features_chain = self.chains.get_next_feature()
-        self.is_changed = self.chains.is_changed
         
         return next_features_chain 
 
     def produce_meta(self):
         if self.meta_lines:
             return random.choice(self.meta_lines)
+        return ""
+
+    def produce_meta_minor(self):
+        if self.minor_lines:
+            minor_idx = random.randint(0, len(self.minor_lines)-9)
+            return self.minor_lines[minor_idx:minor_idx+8] 
         return ""
 
 
@@ -81,6 +87,8 @@ class ChainedEntity():
 
         self.chained_feature = chained_feature
         self.features_chain = features_chain
+        self.uid = chained_feature.source + str(chained_feature.start_point)
+
         self.chains = chains
         self.main_title = self.chained_feature.get_main_title() 
         self.context = sorted(self.chained_feature.get_context(), key = lambda _ : _.order_no)
@@ -110,6 +118,8 @@ class ChainedEntity():
 
         self.variation = 0
         self.variation_on_rise = True
+        self.constant_variations = random.sample([_ for _ in range(1,9,2)], 3)
+        self.palette = random.choice(colors.palettes) 
 
         self.question_index = VISUAL_PART
         self.active_index = 0
@@ -158,6 +168,8 @@ class ChainedEntity():
             if triggered and within(self.sl, c):
                 self.stop_activated = True
                 LAST_EVENT = "ERROR"
+                self.chained_feature.register_error(self.active_question.order_no)
+                self.features_chain.update_errors(register_new=True)
                 return False
             
             if triggered and within(self.tp, c):
@@ -208,6 +220,8 @@ class ChainedEntity():
         global NEW_EVENT
         LAST_EVENT = "ERROR"
         NEW_EVENT = True
+        self.chained_feature.register_error(self.active_question.order_no)
+        self.features_chain.update_errors(register_new=True)
 
         self.generate_options()
 
@@ -465,18 +479,21 @@ class ChainedDrawer():
                                                        inter_color(col1[2], col2[2], percent))
             rgb_col = colors.white 
 
+            palette = line.palette
+            green1, green2, red1, red2, mixed = palette
+
             if candle.green:
                 if not opposite_blend:
-                    rgb_col = interpolate(colors.green2, colors.green1, abs(line.variation/40))
+                    rgb_col = interpolate(green2, green1, abs(line.variation/40))
                 else:
-                    rgb_col = interpolate(colors.mid_color,colors.green2, abs(line.variation/40))
+                    rgb_col = interpolate(mixed, green2, abs(line.variation/40))
 
             elif candle.red:
                 rgb_col = colors.dark_red 
                 if not opposite_blend:
-                    rgb_col = interpolate(colors.red1, colors.red2, abs(line.variation/40))
+                    rgb_col = interpolate(red1, red2, abs(line.variation/40))
                 else:
-                    rgb_col = interpolate(colors.mid_color, colors.red1, abs(line.variation/40))
+                    rgb_col = interpolate(mixed, red1, abs(line.variation/40))
 
             clip_color = lambda _ : 0 if _ <=0 else 255 if _ >=255 else int(_)
 
@@ -500,7 +517,7 @@ class ChainedDrawer():
                        p1,
                        p2, entry = None, stop = None, profit = None, idle = None, v_rising = False, last = False):
             i = candle.index - p1
-            if line.variation <= 0 and candle.ha and candle.green != candle.ha.green:
+            if 0 in line.constant_variations and line.variation <= 0 and candle.ha and candle.green != candle.ha.green:
                 col = getCandleCol(candle.ha, v_rising, opposite_blend=True)
             else:
                 col = getCandleCol(candle, v_rising)
@@ -511,6 +528,8 @@ class ChainedDrawer():
             cline = fitTozone(_c, minP, maxP)
             lwick = fitTozone(_l, minP, maxP)
             hwick = fitTozone(_h, minP, maxP)
+
+            idle_triggered = False
             
             candle_len = hwick - lwick
             candle_mid = (_h+_l)/2 
@@ -530,6 +549,7 @@ class ChainedDrawer():
             elif idle and idle > _l and idle < _h:
                 h_position, l_position = (1-hwick-candle_len//8, 1-body_mid_zone) if idle > body_mid else (1-body_mid_zone, 1-lwick+candle_len//8)
                 drawSquareInZone( zone, h_position,(i+0.5-0.55)/depth,l_position,(i+0.5+0.55)/depth,(colors.col_wicked_darker))
+                idle_triggered = False
 
             if line.variation >=0:
                 upper, lower = max(oline, cline), min(oline, cline)
@@ -546,7 +566,7 @@ class ChainedDrawer():
                 thickness = 4 if candle.thick_upper else 2
                 drawLineInZone( zone, 1-hwick,(i+0.5)/depth,1-lower,(i+0.5)/depth,col,thickness=thickness)
 
-                if candle.inner:
+                if candle.inner and 1 in line.constant_variations:
                     drawLineInZone( zone, 1-cline,(i+0.5-0.3)/depth,1-oline,(i+0.5+0.3)/depth,col,thickness=3)
                     drawLineInZone( zone, 1-cline,(i+0.5+0.3)/depth,1-oline,(i+0.5-0.3)/depth,col,thickness=3)
                     drawLineInZone( zone, 1-cline,(i+0.5+0.3)/depth,1-cline,(i+0.5-0.3)/depth,col,thickness=3)
@@ -554,56 +574,51 @@ class ChainedDrawer():
 
                     drawLineInZone( zone, 1-(oline),(i+0.5)/depth,1-oline,(i-0.5+0.3)/depth,col,thickness=3)
                     drawLineInZone( zone, 1-(cline),(i+0.5)/depth,1-cline,(i-0.5+0.3)/depth,col,thickness=3)
-                elif candle.pierce:
+
+
+                elif candle.pierce and 2 in line.constant_variations:
                     upper_p = fitTozone(candle.upper_pierce_line, minP, maxP)
                     lower_p = fitTozone(candle.lower_pierce_line, minP, maxP)
                     upper_b = max(oline, cline)
                     lower_b = min(oline, cline)
-                    drawSquareInZone( zone, 1-upper_b,(i+0.5-0.3)/depth,1-upper_p,(i+0.5+0.3)/depth,col, width = 0)
-                    drawSquareInZone( zone, 1-upper_p,(i+0.5)/depth,1-lower_p,(i+0.5+0.3)/depth,col, width = 0)
+                    #drawSquareInZone( zone, 1-upper_b,(i+0.5-0.3)/depth,1-upper_p,(i+0.5+0.3)/depth,col, width = 0)
+                    #drawSquareInZone( zone, 1-upper_p,(i+0.5)/depth,1-lower_p,(i+0.5+0.3)/depth,col, width = 0)
                     mid_p = (upper_p + lower_p)/2
-                    drawLineInZone( zone, 1-(mid_p),(i-0.5+0.3)/depth,1-mid_p,(i+0.5+0.3)/depth,col,thickness=3)
-                    drawLineInZone( zone, 1-(upper_p),(i+0.5)/depth,1-upper_p,(i+0.5+0.5)/depth,col,thickness=3)
-                    drawLineInZone( zone, 1-(lower_p),(i+0.5)/depth,1-lower_p,(i+0.5+0.5)/depth,col,thickness=3)
+                    #drawLineInZone( zone, 1-(mid_p),(i-0.5+0.3)/depth,1-mid_p,(i+0.5+0.3)/depth,col,thickness=3)
+                    #drawLineInZone( zone, 1-(upper_p),(i+0.5)/depth,1-upper_p,(i+0.5+0.5)/depth,col,thickness=3)
+                    #drawLineInZone( zone, 1-(lower_p),(i+0.5)/depth,1-lower_p,(i+0.5+0.5)/depth,col,thickness=3)
+
+                    drawLineInZone( zone, 1-(mid_p),(i+0.5+0.3)/depth,1-upper_p,(i+0.5)/depth,col,thickness=3)
+                    drawLineInZone( zone, 1-(mid_p),(i+0.5-0.3)/depth,1-lower_p,(i+0.5)/depth,col,thickness=3)
+                    drawLineInZone( zone, 1-(mid_p),(i+0.5+0.3)/depth,1-upper_p,(i+0.5)/depth,col,thickness=3)
+                    drawLineInZone( zone, 1-(mid_p),(i+0.5-0.3)/depth,1-lower_p,(i+0.5)/depth,col,thickness=3)
 
                     drawSquareInZone( zone, 1-lower_p,(i+0.5-0.3)/depth,1-lower_b,(i+0.5+0.3)/depth,col, width = 0)
-                # elif candle.conjoined:
-                #     #drawSquareInZone( zone, 1-cline,(i+0.5-0.5)/depth,1-oline,(i+0.5+0.5)/depth,col, width = 2)
-                #     for conjugate in candle.conjugates:
-                #         c1, c1w, c2, c2w = conjugate
-                #         c1 = fitTozone(c1, minP, maxP)
-                #         c1w = fitTozone(c1w, minP, maxP)
-                #         c2 = fitTozone(c2, minP, maxP)
-                #         c2w = fitTozone(c2w, minP, maxP)
-                #
-                #         drawLineInZone( zone, 1-c1,(i+0.5-0.3)/depth,1-c1,(i+0.5+0.3)/depth,col,thickness=3)
-                #         drawLineInZone( zone, 1-c2,(i+0.5-0.3)/depth,1-c2,(i+0.5+0.3)/depth,col,thickness=3)
+
                 else:
-                    mid_p = (cline + oline)/2
                     drawSquareInZone( zone, 1-cline,(i+0.5-0.3)/depth,1-oline,(i+0.5+0.3)/depth,col, width = 0)
-                    drawLineInZone( zone, 1-(mid_p),(i+0.5-0.45)/depth,1-mid_p,(i+0.5+0.45)/depth,col,thickness=3)
+                    if 3 in line.constant_variations:
+                        mid_p = (cline + oline)/2
+                        drawLineInZone( zone, 1-(mid_p),(i+0.5-0.45)/depth,1-mid_p,(i+0.5+0.45)/depth,col,thickness=3)
+
                     
-                if candle.weak_pierce_prev:
-                    drawLineInZone( zone, 1-lwick,(i+0.5)/depth,1-lwick,(i-0.5)/depth,col,thickness=3)
-                    drawLineInZone( zone, 1-hwick,(i+0.5)/depth,1-hwick,(i-0.5)/depth,col,thickness=3)
+                if candle.weak_pierce_prev and 4 in line.constant_variations:
+                    drawLineInZone( zone, 1-lwick,(i+0.5)/depth,1-lwick,(i-0.5-0.3)/depth,col,thickness=3)
+                    drawLineInZone( zone, 1-hwick,(i+0.5)/depth,1-hwick,(i-0.5-0.3)/depth,col,thickness=3)
 
-                if candle.weak_pierce_next:
-                    drawLineInZone( zone, 1-lwick,(i+0.5)/depth,1-lwick,(i+1.5)/depth,col,thickness=3)
-                    drawLineInZone( zone, 1-hwick,(i+0.5)/depth,1-hwick,(i+1.5)/depth,col,thickness=3)
+                if candle.weak_pierce_next and 5 in line.constant_variations:
+                    drawLineInZone( zone, 1-lwick,(i+0.5)/depth,1-lwick,(i+1.5+0.3)/depth,col,thickness=3)
+                    drawLineInZone( zone, 1-hwick,(i+0.5)/depth,1-hwick,(i+1.5+0.3)/depth,col,thickness=3)
 
-                if candle.overhigh:
+                if candle.overhigh and 6 in line.constant_variations:
                     drawLineInZone( zone, 1-hwick+0.5/depth-1/depth,(i+0.5+0.15)/depth,1-hwick-0.5/depth-1/depth,(i+0.5)/depth,col,thickness=3)
                     drawLineInZone( zone, 1-hwick+0.5/depth-1/depth,(i+0.5-0.15)/depth,1-hwick-0.5/depth-1/depth,(i+0.5)/depth,col,thickness=3)
-                    #drawCircleInZone( zone, 1-hwick,(i+0.5)/depth,1/depth,col, width = 10)
-                if candle.overlow:
+                if candle.overlow and 7 in line.constant_variations:
                     drawLineInZone( zone, 1-lwick-0.5/depth+1/depth,(i+0.5+0.15)/depth,1-lwick+0.5/depth+1/depth,(i+0.5)/depth,col,thickness=3)
                     drawLineInZone( zone, 1-lwick-0.5/depth+1/depth,(i+0.5-0.15)/depth,1-lwick+0.5/depth+1/depth,(i+0.5)/depth,col,thickness=3)
-                    # drawLineInZone( zone, 1-lwick-1/depth,(i+0.5)/depth,1-lwick,(i-0.5)/depth,col,thickness=3)
-                    # drawLineInZone( zone, 1-lwick+1/depth,(i+0.5)/depth,1-lwick,(i-0.5)/depth,col,thickness=3)
-                    #drawCircleInZone( zone, 1-lwick,(i+0.5)/depth,1/depth,col, width = 10)
 
 
-                if candle.joined:
+                if candle.joined and 8 in line.constant_variations:
                     drawLineInZone( zone, 1-cline,(i+0.5-0.3)/depth,1-cline,(i+1.0+0.3)/depth,col,thickness=3)
 
             if idle and (idle>=_l and idle<=_h or last):
@@ -749,7 +764,7 @@ class ChainedProcessor():
     def __init__(self, pygame_instance, display_instance, ui_ref, data_label, data_path, beat_time = 1):
         self.W = W
         self.H = H
-        self.producer = ChainedsProducer(data_label, data_path, meta_path = META_SCRIPT, ui_ref = ui_ref)
+        self.producer = ChainedsProducer(data_label, data_path, meta_path = META_SCRIPT, minor_meta = META_MINOR, ui_ref = ui_ref)
         self.drawer = ChainedDrawer(pygame_instance, display_instance, W, H)
         self.control = KeyboardChainModel(pygame_instance)
         self.active_line = None
@@ -758,10 +773,15 @@ class ChainedProcessor():
         self.active_beat_time = beat_time 
         self.time_elapsed_cummulative = 0
         self.ui_ref = ui_ref
+
+        self.last_uid = None
+        self.uid_changed = False
+
         self.active_entity = ChainedEntity(self.producer.produce_next_feature(),
                                            self.producer.produce_chain(),
                                            self.producer.chains,
                                            self.pygame_instance, self.W, self.H)
+        print("Chained Entity created")
         self.ui_ref.set_image(self.active_entity.chained_feature.ask_for_image())
         self.ui_ref.meta_text = ""
         self.ui_ref.global_progress = self.producer.chains.get_chains_progression()
@@ -794,9 +814,8 @@ class ChainedProcessor():
             self.time_elapsed_cummulative = 0
             self.active_beat_time = (60*1000)/self.active_entity.time_estemated
 
-        line_swapped = self.producer.is_changed
 
-        return self.active_entity.time_estemated, line_swapped, self.producer.produce_meta()
+        return self.active_entity.time_estemated, self.producer.produce_meta(), self.producer.produce_meta_minor()
 
 
     def redraw(self):
@@ -809,12 +828,23 @@ class ChainedProcessor():
 
     def get_feedback(self):
         global NEW_EVENT
+
         if LAST_EVENT == "POSITIVE" and NEW_EVENT:
-            self.ui_ref.bg_color = colors.dark_green
             NEW_EVENT = False
+
+            if not self.active_entity or self.active_entity.uid == self.last_uid:
+                return 0
+
+            self.last_uid = self.active_entity.uid
+            self.ui_ref.bg_color = colors.dark_green
             return 1
         elif LAST_EVENT == "ERROR" and NEW_EVENT:
             NEW_EVENT = False
+
+            if not self.active_entity or self.active_entity.uid == self.last_uid:
+                return 0
+
+            self.last_uid = self.active_entity.uid
             self.ui_ref.bg_color = colors.dark_red
             return -1
         else:

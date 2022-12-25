@@ -38,3 +38,41 @@ green1 = hex_to_rgb("#44803F")
 green2 = hex_to_rgb("#146152")
 
 mid_color = hex_to_rgb("#FFCD39")
+
+palettes = [] 
+palettes.append([green1, green2, red1, red2, mid_color])
+palettes.append([hex_to_rgb("#F2CA52"),
+                 hex_to_rgb("#F28705"),
+                 hex_to_rgb("#D91604"),
+                 hex_to_rgb("#8C0303"),
+                 hex_to_rgb("#F2D4C2")])
+
+palettes.append([hex_to_rgb("#31AFE0"),
+                 hex_to_rgb("#2F47AD"),
+                 hex_to_rgb("#E47632"),
+                 hex_to_rgb("#AD4728"),
+                 hex_to_rgb("#4C557A")])
+
+palettes.append([hex_to_rgb("#3DE073"),
+                 hex_to_rgb("#008F30"),
+                 hex_to_rgb("#F50600"),
+                 hex_to_rgb("#8F3633"),
+                 hex_to_rgb("#DEDAD9")])
+
+palettes.append([hex_to_rgb("#38DFEB"),
+                 hex_to_rgb("#2E979E"),
+                 hex_to_rgb("#EB50AD"),
+                 hex_to_rgb("#9E266E"),
+                 hex_to_rgb("#FAE55F")])
+
+palettes.append([hex_to_rgb("#6459D9"),
+                 hex_to_rgb("#47418C"),
+                 hex_to_rgb("#D943A7"),
+                 hex_to_rgb("#8C246A"),
+                 hex_to_rgb("#BFD94E")])
+
+palettes.append([hex_to_rgb("#51E0A0"),
+                 hex_to_rgb("#329468"),
+                 hex_to_rgb("#5B3AE0"),
+                 hex_to_rgb("#2E1594"),
+                 hex_to_rgb("#E09935")])

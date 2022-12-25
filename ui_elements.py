@@ -76,11 +76,9 @@ class UpperLayout():
         clip_color = lambda _ : 0 if _ <=0 else 255 if _ >=255 else int(_)
 
         self.display_instance.fill(white)
-        tiling_step = 200
 
         if self.image:
             self.display_instance.blit(self.image, (0, 0))
-            tiling_step = 300
             self.display_instance.blit(self.trans_surface, (0,0))
 
 
@@ -141,39 +139,14 @@ class UpperLayout():
 
         self.pygame_instance.draw.circle(self.display_instance,
                                   line_color,
-                                  (W, H//2),
-                                   (200)*self.timing_ratio, width=10)
-
-        self.pygame_instance.draw.circle(self.display_instance,
-                                  line_color,
                                   (0, H//2),
-                                   (200)*self.timing_ratio, width=10)
+                                   (W)*self.timing_ratio, width=10)
 
         # self.pygame_instance.draw.circle(self.display_instance,
         #                           line_color,
-        #                           (W//2, 0),
-        #                            (200)*self.timing_ratio, width=10)
-        #
-        # self.pygame_instance.draw.circle(self.display_instance,
-        #                           line_color,
-        #                           (W//2, H),
+        #                           (0, H//2),
         #                            (200)*self.timing_ratio, width=10)
 
-
-        # self.pygame_instance.draw.rect(self.display_instance,
-        #                           line_color,
-        #                           ((575+25 - 200 + ((200+400)*(1-self.timing_ratio))/2)+150,
-        #                            275+25+25+150,
-        #                            (200+400)*self.timing_ratio,
-        #                            200-50-50))
-        #
-        # self.pygame_instance.draw.rect(self.display_instance,
-        #                           line_color,
-        #                           (575+50+25+150,
-        #                            (275-200 + ((200+400)*(1-self.timing_ratio))/2)+150,
-        #                            200-50-50,
-        #
-        #                            (200+400)*self.timing_ratio))
 
         line_color = (int((235)*(1-self.percent)),int((235)*(self.percent)),0)
 

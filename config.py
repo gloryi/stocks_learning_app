@@ -5,6 +5,7 @@ IMAGES_MAPPING_FILE = os.path.join(os.getcwd(), "dataset_mapping_2500.json")
 CHINESE_FONT = os.path.join(os.getcwd(), "fonts", "simhei.ttf")
 CYRILLIC_FONT = os.path.join(os.getcwd(), "fonts", "Inter_font.ttf")
 META_SCRIPT = os.path.join(os.getcwd(), "trading_affirmations.csv")
+META_MINOR = os.path.join(os.getcwd(), "semantical_affirmations.csv")
 BPM = 10
 
 W = int(1400*1.18+20)

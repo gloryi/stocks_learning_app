@@ -1,12 +1,9 @@
 import pygame
 from time_utils import global_timer, Counter, Progression
 
-#from six_words_mode import SixtletsProcessor
 from feature_chain_mode import ChainedProcessor
-#from feature_chain_mode_semantic import ChainedProcessor as ChainedProcessorS
 
 from config import STOCKS_DATA, W, H, BPM, CYRILLIC_FONT
-#from config_semantic import TEST_LANG_DATA
 
 from colors import white
 import colors
@@ -14,7 +11,6 @@ import time
 import random
 
 from ui_elements import UpperLayout
-#from ui_elements_semantic import UpperLayout as UpperLayoutS
  
 pygame.init()
 display_surface = pygame.display.set_mode((W, H))
@@ -22,7 +18,6 @@ display_surface = pygame.display.set_mode((W, H))
 time_to_cross_screen = 16000
 time_to_appear = 4000
 beat_time = 0 
-paused = True
 pause_progression = []
 active_count = 0
 error_count = 0
@@ -31,19 +26,19 @@ fallback = 0
 streak = 0
 max_streak = 0
 active_balance = 100
+
 is_pause_displayed = False
+paused = True
 
 delta_timer = global_timer(pygame)
 
 upper_stats = UpperLayout(pygame, display_surface)
-#upper_stats_s = UpperLayoutS(pygame, display_surface)
 
 new_line_counter = Counter(upper_stats)
-pause_counter = Counter(bpm = 1)
+pause_counter = Counter(bpm = 1/2)
 
 game = ChainedProcessor(pygame, display_surface, upper_stats, "hanzi chineese", STOCKS_DATA,
                         (60*1000)/BPM)
-#game_s = ChainedProcessorS(pygame, display_surface, upper_stats_s, "hanzi chineese", TEST_LANG_DATA, (60*1000)/BPM)
 
 
 progression = Progression(new_line_counter,
@@ -59,11 +54,13 @@ fpsClock = pygame.time.Clock()
 mode = "STOCKS"
 active_game = game
 active_stats = upper_stats
-swap = False
 meta = ""
+meta_minor = []
 
 base_font = pygame.font.match_font("setofont")
 base_font = pygame.font.Font(base_font, 50)
+minor_font = pygame.font.match_font("setofont")
+minor_font = pygame.font.Font(minor_font, 22)
     
 def place_text(text, x, y, transparent = False, renderer = None, base_col = (80,80,80)):
     if renderer is None:
@@ -77,11 +74,9 @@ def place_text(text, x, y, transparent = False, renderer = None, base_col = (80,
     display_surface.blit(text, textRect)
 
  
+print("Game cycle started")
 for time_delta in delta_timer:
     fpsClock.tick(30)
-
-    if swap:
-        swap = False
 
     if paused and not is_pause_displayed:
         display_surface.fill(white)
@@ -92,7 +87,8 @@ for time_delta in delta_timer:
 
         if pause_progression:
             total = sum(int(_[:-1]) for _ in pause_progression) - 100*len(pause_progression)
-            place_text(" ".join(pause_progression) + "||" + f" {total}$" + f" | {max_fallback}/4 ERR | {max_streak}/10 GAINS",
+            current_progress = pause_progression + ["#" for _ in range(3-len(pause_progression)-3)]
+            place_text(" ".join(current_progress) + "||" + f" {total}$" + f" | {max_fallback}/4 ERR | {max_streak}/10 GAINS",
                         W//2,
                         H//2-70 - 40,
                         transparent = False,
@@ -109,6 +105,14 @@ for time_delta in delta_timer:
                             transparent = False,
                             renderer = None,
                             base_col = (colors.col_bt_pressed))
+        if meta_minor:
+            for i, line in enumerate(meta_minor):
+                place_text(line,
+                            W//2,
+                            H//2-400 + 16*(i+1),
+                            transparent = True,
+                            renderer = minor_font,
+                            base_col = (colors.col_bt_pressed))
         is_pause_displayed = True
 
     if paused:
@@ -117,7 +121,7 @@ for time_delta in delta_timer:
         if keys[pygame.K_SPACE]:
             paused = False
 
-            if len(pause_progression) >=5:
+            if len(pause_progression) >=3:
                 pause_progression = []
                 active_count = 0
                 max_fallback = 0
@@ -143,7 +147,7 @@ for time_delta in delta_timer:
         paused = True
 
     if new_line_counter.is_tick(time_delta):
-        next_tick_time, swap, meta = active_game.add_line()
+        next_tick_time, meta, meta_minor = active_game.add_line()
         new_line_counter.modify_bpm(next_tick_time)
 
 
@@ -151,7 +155,6 @@ for time_delta in delta_timer:
     feedback = active_game.tick(beat_time, time_delta)
 
     if feedback > 0:
-        swap = True
         active_count += 3
         active_balance += 0.25*active_balance*3
         active_balance = int(active_balance)
