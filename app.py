@@ -69,7 +69,7 @@ meta_minor = []
 base_font = pygame.font.match_font("setofont")
 base_font = pygame.font.Font(base_font, 50)
 minor_font = pygame.font.match_font("setofont")
-minor_font = pygame.font.Font(minor_font, 22)
+minor_font = pygame.font.Font(minor_font, 24)
 
 upper_stats.active_balance = 100
     
@@ -136,7 +136,7 @@ for time_delta in delta_timer:
             for i, line in enumerate(meta_minor):
                 place_text(line,
                             W//2,
-                            H//2-400 + 16*(i+1),
+                            H//2-500 + 20*(i+1),
                             transparent = True,
                             renderer = minor_font,
                             base_col = (colors.col_bt_pressed))
