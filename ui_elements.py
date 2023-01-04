@@ -25,6 +25,7 @@ class UpperLayout():
         self.bg_color = (128,128,128)
 
         self.global_progress = ""
+        self.active_balance = ""
 
         self.speed_index = 5000
         self.percent = 0.8
@@ -39,7 +40,7 @@ class UpperLayout():
         self.image = None
         self.meta_text = ""
         self.trans_surface = self.pygame_instance.Surface((W,H)) 
-        self.trans_surface.set_alpha(128)                # alpha level
+        self.trans_surface.set_alpha(160)                # alpha level
         self.trans_surface.fill((30,0,30))           # this fills the entire surface
 
     def place_text(self, text, x, y, transparent = False, renderer = None, base_col = (80,80,80)):
@@ -144,9 +145,18 @@ class UpperLayout():
 
         line_color = (int((235)*(1-self.percent)),int((235)*(self.percent)),0)
 
+
+
+
         self.pygame_instance.draw.rect(self.display_instance,
                                   line_color,
                                   ((320 + (250*3*(1-self.percent))/2)+150,
                                    0,
                                    250*3*self.percent,
                                    25))
+
+        self.place_text(f"{self.active_balance}$", W//2,
+                        12,
+                        transparent = True,
+                        renderer = self.font,
+                        base_col = (50,50,50))

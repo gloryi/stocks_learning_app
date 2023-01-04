@@ -25,6 +25,7 @@ class simpleCandle():
         self.down_within_p2 = None
         self.to_offset = None
         self.to_price = None
+        self.from_price = None
 
         self.green = self.c >= self.o     # green or red
         self.red = self.c < self.o        #
@@ -76,7 +77,9 @@ def get_candles(asset_name, index):
     if asset_name not in knwon_prices:
         fetch_prices(asset_name)
 
-    for candle in knwon_prices[asset_name][int(index):]:
+    #HARDCODE
+    
+    for candle in knwon_prices[asset_name][int(index)-(200-140):]:
         yield candle
 
 class ChainUnitType():
@@ -141,7 +144,6 @@ class ChainedFeature():
         self.cummulative_error = 0
         self.decreased = False
         self.rised = False
-        self.review = False
         self.attached_image = "" 
         self.basic_timing_per_level = {0:30,
                                        1:30,
@@ -238,23 +240,27 @@ class ChainedFeature():
             self.burn_key = burn_keys["LONG"] 
             self.candles[VISUAL_PART-1].to_offset = (max_high_i - anchor_i)
             self.candles[VISUAL_PART-1].to_price = max_high
+            self.candles[VISUAL_PART-1].from_price = self.candles[VISUAL_PART-1].l
             self.burn_ind = VISUAL_PART-1
 
         elif low_range > high_range and max_high < decision_candle.h:
             self.burn_key = burn_keys["SHORT"]
             self.candles[VISUAL_PART-1].to_offset = (min_low_i - anchor_i)
+            self.candles[VISUAL_PART-1].from_price = self.candles[VISUAL_PART-1].h
             self.candles[VISUAL_PART-1].to_price = min_low
             self.burn_ind == VISUAL_PART-1
 
         elif high_range > low_range and low_first:
             self.burn_key = burn_keys["LONG P"] 
             self.candles[min_low_i].to_offset = (max_high_i - min_low_i)
+            self.candles[min_low_i].from_price = self.candles[min_low_i].l
             self.candles[min_low_i].to_price = max_high
             self.burn_ind = min_low_i
 
         else:
             self.burn_key = burn_keys["SHORT P"]
             self.candles[max_high_i].to_offset = (min_low_i - max_high_i)
+            self.candles[max_high_i].from_price = self.candles[max_high_i].h
             self.candles[max_high_i].to_price = min_low
             self.burn_ind = max_high_i
 
@@ -485,7 +491,7 @@ class ChainedModel():
 
         self.burning_chain = []
         self.burning_in_work = []
-        self.burning_size = 6 
+        self.burning_size = 5 
         self.burn_tick = 0
 
         is_restored = self.restore_results(PROGRESSION_FILE)
@@ -577,6 +583,8 @@ class ChainedModel():
 
     def get_next_feature(self):
 
+        self.burning_in_work = list(filter(lambda _: _.is_burning, self.burning_in_work))
+
         if self.burning_in_work:
 
             self.burn_tick += 1
@@ -584,9 +592,7 @@ class ChainedModel():
             if self.burn_tick == 0:
                 random.shuffle(self.burning_in_work)
 
-            if self.burning_in_work[-1].is_burning:
-                return self.burning_in_work[-1]
-            return self.burning_in_work.pop()
+            return self.burning_in_work[-1]
         else:
             self.set_burning_in_work()
 
@@ -598,7 +604,7 @@ class ChainedModel():
             self.change_active_chain()
             next_feature = self.active_chain.get_next_feature()
 
-        if not next_feature.review and not next_feature in self.burning_chain:
+        if not next_feature in self.burning_chain:
             self.burning_chain.append(next_feature)
 
         return next_feature

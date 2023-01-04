@@ -9,7 +9,7 @@ META_MINOR = os.path.join(os.getcwd(), "semantical_affirmations.csv")
 BPM = 10
 
 W = int(1400*1.18+20)
-H = int(800*1.18+70)
+H = int(800*1.18+90)
 
-VISUAL_PART = 140
+VISUAL_PART = 200 
 STAKE_PART = 15

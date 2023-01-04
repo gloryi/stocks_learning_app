@@ -53,37 +53,13 @@ palettes.append([hex_to_rgb("#3DE073"), hex_to_rgb("#008F30"),
                  hex_to_rgb("#F50600"), hex_to_rgb("#8F3633"),
                  hex_to_rgb("#FAE55F")])
 
-#palettes.append([hex_to_rgb("#38DFEB"), hex_to_rgb("#2E979E"),
-                 #hex_to_rgb("#EB50AD"), hex_to_rgb("#9E266E"),
-                 #hex_to_rgb("#FAE55F")])
-
 palettes.append([hex_to_rgb("#00B3AD"), hex_to_rgb("#006663"),
                  hex_to_rgb("#B33F00"), hex_to_rgb("#B33F00"),
                  hex_to_rgb("#FAE55F")])
 
-#palettes.append([hex_to_rgb("#33A6A6"), hex_to_rgb("#323673"),
-                 #hex_to_rgb("#F25041"), hex_to_rgb("#8C1F66"),
-                 #hex_to_rgb("#FAE55F")])
-
-#palettes.append([hex_to_rgb("#AAECFC"), hex_to_rgb("#88A3E2"),
-                 #hex_to_rgb("#FC8DCA"), hex_to_rgb("#C37EDB"),
-                 #hex_to_rgb("#FAE55F")])
-
-#palettes.append([hex_to_rgb("#706513"), hex_to_rgb("#08403E"),
-                 #hex_to_rgb("#962B09"), hex_to_rgb("#520120"),
-                 #hex_to_rgb("#FAE55F")])
-
-#palettes.append([hex_to_rgb("#68DADB"), hex_to_rgb("#17A599"),
-                 #hex_to_rgb("#F42331"), hex_to_rgb("#D92030"),
-                 #hex_to_rgb("#FAE55F")])
-
 palettes.append([hex_to_rgb("#18818C"), hex_to_rgb("#343D59"),
                  hex_to_rgb("#D90707"), hex_to_rgb("#D40404"),
                  hex_to_rgb("#FAE55F")])
-
-#palettes.append([hex_to_rgb("#14CCC5"), hex_to_rgb("#09B2AC"),
-                 #hex_to_rgb("#FF00CB"), hex_to_rgb("#B21291"),
-                 #hex_to_rgb("#FAE55F")])
 
 palettes.append([hex_to_rgb("#C2FFE0"), hex_to_rgb("#00B258"),
                  hex_to_rgb("#FF8475"), hex_to_rgb("#FF1B00"),
@@ -104,6 +80,7 @@ palettes.append([hex_to_rgb("#8AF084"), hex_to_rgb("#3FA339"),
 palettes.append([hex_to_rgb("#0BDB15"), hex_to_rgb("#008F07"),
                  hex_to_rgb("#DB0B62"), hex_to_rgb("#8F043E"),
                  hex_to_rgb("#FAE55F")])
+
 palettes.append([hex_to_rgb("#21EB74"), hex_to_rgb("#009E41"),
                  hex_to_rgb("#EB2E20"), hex_to_rgb("#9E150B"),
                  hex_to_rgb("#FAE55F")])
