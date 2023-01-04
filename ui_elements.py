@@ -30,6 +30,7 @@ class UpperLayout():
         self.percent = 0.8
         self.progress_ratio = 0.0
         self.timing_ratio = 1.0
+        self.move_image = False
         self.mastered = 0
         self.to_master = 0
         self.variation = 0
@@ -71,7 +72,6 @@ class UpperLayout():
             self.image = self.images_cached[path_to_image]
 
 
-
     def redraw(self):
         clip_color = lambda _ : 0 if _ <=0 else 255 if _ >=255 else int(_)
 
@@ -80,7 +80,6 @@ class UpperLayout():
         if self.image:
             self.display_instance.blit(self.image, (0, 0))
             self.display_instance.blit(self.trans_surface, (0,0))
-
 
         if self.variation_on_rise:
             self.variation += 1
@@ -141,11 +140,6 @@ class UpperLayout():
                                   line_color,
                                   (0, H//2),
                                    (W)*self.timing_ratio, width=10)
-
-        # self.pygame_instance.draw.circle(self.display_instance,
-        #                           line_color,
-        #                           (0, H//2),
-        #                            (200)*self.timing_ratio, width=10)
 
 
         line_color = (int((235)*(1-self.percent)),int((235)*(self.percent)),0)

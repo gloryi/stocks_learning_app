@@ -15,39 +15,32 @@ class simpleCandle():
         self.v = v
         self.ha = []
 
-        self.green = self.c >= self.o
-        self.red = self.c < self.o
-        self.last = False
         self.vRising = False
         self.index = index
-
-        self.joined = False
-        self.inner = False
-        self.pierce = False
-        self.conjoined = False
-        self.doji = False
-        self.overhigh = False
-        self.overlow = False
-        self.conjugates = []
-        self.weak_pierce_prev = False
-        self.weak_pierce_next = False
         self.upper_pierce_line = max(self.o, self.c)
         self.lower_pierce_line = min(self.o, self.c)
-
-        self.up_from_within = False
         self.up_within_p1  = None
         self.up_within_p2 = None
-
-        self.down_from_within = False
         self.down_within_p1 = None
         self.down_within_p2 = None
-        
-
         self.to_offset = None
         self.to_price = None
 
-        self.thick_upper = False
-        self.thick_lower = False
+        self.green = self.c >= self.o     # green or red
+        self.red = self.c < self.o        #
+        self.is_same_color = False        # same color or not
+        self.overhigh = False             # are overhigh
+        self.overlow = False              # are overlow
+        self.inner = False                # are candle inner
+        self.pierce = False               # are candle pierce
+        self.weak_pierce_prev = False     # are candle weak pierces prev
+        self.weak_pierce_next = False     # are candle weak pierces next
+        self.up_from_within = False       # are candles goes down from within
+        self.down_from_within = False     # are candle goes up from within
+        self.thick_upper = False          # upper wick taller or lower wick
+        self.thick_lower = False          #
+        
+
 
     def ochl(self):
         return self.o, self.c, self.h, self.l
@@ -135,6 +128,8 @@ class ChainedFeature():
         self.start_point = start_point
         self.candles = self.pre_process_candles()
 
+        self.feature_level = 0
+
         self.is_burning = False
         self.burn_level = 0
         self.burn_key = burn_keys["LONG"]
@@ -169,17 +164,14 @@ class ChainedFeature():
                 upper_next, lower_next = max(candle.o, candle.c), min(candle.o, candle.c)
                 upper_prev, lower_prev = max(candles[-1].o, candles[-1].c), min(candles[-1].o, candles[-1].c)
 
+                if candles[-1].green == candle.green:
+                    candle.is_same_color = True
+
                 if candle.h - upper_next > lower_next - candle.l:
                     candle.thick_upper = True
+
                 elif candle.h - upper_next < lower_next - candle.l:
                     candle.thick_lower = True
-                
-
-                if candle.red and upper_next == lower_prev:
-                    candles[-1].joined = True
-
-                if candle.green and upper_prev == lower_next:
-                    candles[-1].joined = True
                 
                 if candles[-1].h > candle.h and candles[-1].l < candle.l:
                     candles[-1].weak_pierce_next = True
@@ -187,15 +179,12 @@ class ChainedFeature():
                 if candle.h > candles[-1].h and candle.l < candles[-1].l:
                     candle.weak_pierce_prev = True
 
-                elif candle.h > candles[-1].h:
+                if candle.h > candles[-1].h:
                     candle.overhigh = True
 
                 elif candle.l < candles[-1].l:
                     candle.overlow = True
 
-
-                if candle.o == candle.c:
-                    candle.doji = True
                 
                 if upper_next <= upper_prev and lower_next >= lower_prev:
                     candle.inner = True
@@ -228,9 +217,9 @@ class ChainedFeature():
         anchor = (decision_candle.c+decision_candle.o)/2
         anchor_i = VISUAL_PART-1
 
-        min_low = anchor
+        min_low = min(decision_candle.o, decision_candle.c)
         min_low_i = VISUAL_PART-1
-        max_high = anchor
+        max_high = max(decision_candle.o, decision_candle.c)
         max_high_i = VISUAL_PART-1
         
         for i, candle in enumerate(self.candles[VISUAL_PART:]):
@@ -245,11 +234,17 @@ class ChainedFeature():
         high_range = max_high - anchor
         low_first = min_low_i < max_high_i
 
-        if high_range > low_range and not low_first:
+        if high_range > low_range and min_low > decision_candle.l:
             self.burn_key = burn_keys["LONG"] 
             self.candles[VISUAL_PART-1].to_offset = (max_high_i - anchor_i)
             self.candles[VISUAL_PART-1].to_price = max_high
             self.burn_ind = VISUAL_PART-1
+
+        elif low_range > high_range and max_high < decision_candle.h:
+            self.burn_key = burn_keys["SHORT"]
+            self.candles[VISUAL_PART-1].to_offset = (min_low_i - anchor_i)
+            self.candles[VISUAL_PART-1].to_price = min_low
+            self.burn_ind == VISUAL_PART-1
 
         elif high_range > low_range and low_first:
             self.burn_key = burn_keys["LONG P"] 
@@ -257,17 +252,12 @@ class ChainedFeature():
             self.candles[min_low_i].to_price = max_high
             self.burn_ind = min_low_i
 
-        elif low_range > high_range and not low_first:
+        else:
             self.burn_key = burn_keys["SHORT P"]
             self.candles[max_high_i].to_offset = (min_low_i - max_high_i)
             self.candles[max_high_i].to_price = min_low
             self.burn_ind = max_high_i
 
-        else:
-            self.burn_key = burn_keys["SHORT"]
-            self.candles[VISUAL_PART-1].to_offset = (min_low_i - anchor_i)
-            self.candles[VISUAL_PART-1].to_price = min_low
-            self.burn_ind == VISUAL_PART-1
 
 
 
@@ -301,6 +291,35 @@ class ChainedFeature():
 
     def get_candles_with_offset(self, offset_a, offset_b):
         return self.candles[offset_a:offset_a+offset_b]
+
+    def get_lines_with_offset(self, offset_a, offset_b):
+        selected_candles = self.candles[offset_a:offset_a+offset_b]
+        special_lines = []
+        
+        high_low_line = []
+        last_high = False
+        for i, candle in enumerate(selected_candles):
+            if candle.overhigh:
+                if not last_high or not high_low_line:
+                    high_low_line.append([candle.index, candle.h])
+                    last_high = True
+                elif candle.h > high_low_line[-1][1]:
+                    high_low_line[-1] = [candle.index, candle.h]
+                    last_high = True
+                
+            elif candle.overlow:
+                if last_high or not high_low_line:
+                    high_low_line.append([candle.index, candle.l])
+                    high_low_line[-1] = [candle.index, candle.l]
+                    last_high = False
+                elif candle.l < high_low_line[-1][1]:
+                    high_low_line[-1] = [candle.index, candle.l]
+                    last_high = False
+
+        special_lines.append(high_low_line)
+
+        return special_lines
+
 
     def get_all_candles(self):
         return self.candles
@@ -466,7 +485,8 @@ class ChainedModel():
 
         self.burning_chain = []
         self.burning_in_work = []
-        self.burning_size = 5
+        self.burning_size = 6 
+        self.burn_tick = 0
 
         is_restored = self.restore_results(PROGRESSION_FILE)
 
@@ -518,7 +538,6 @@ class ChainedModel():
 
         self.resample()
 
-
         if self.mistakes_trigger:
             self.mistakes_trigger = False
 
@@ -558,12 +577,21 @@ class ChainedModel():
 
     def get_next_feature(self):
 
-        self.set_burning_in_work()
         if self.burning_in_work:
-            random.shuffle(self.burning_in_work)
+
+            self.burn_tick += 1
+            self.burn_tick %= 2
+            if self.burn_tick == 0:
+                random.shuffle(self.burning_in_work)
+
             if self.burning_in_work[-1].is_burning:
                 return self.burning_in_work[-1]
             return self.burning_in_work.pop()
+        else:
+            self.set_burning_in_work()
+
+        if not self.active_chain:
+            self.change_active_chain()
 
         next_feature = self.active_chain.get_next_feature()
         if not next_feature:
@@ -581,6 +609,7 @@ class ChainedModel():
     def set_burning_in_work(self):
         if self.is_burning():
             self.burning_in_work, self.burning_chain = self.burning_chain[:self.burning_size], self.burning_chain[self.burning_size:]
+
             for feature in self.burning_in_work:
                 feature.set_burn_mode()
 
