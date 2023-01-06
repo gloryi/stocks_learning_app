@@ -2,9 +2,10 @@ import random
 import json
 import os
 import csv
-from config import PROGRESSION_FILE, IMAGES_MAPPING_FILE, VISUAL_PART, STAKE_PART
+from config import PROGRESSION_FILE, IMAGES_MAPPING_FILE, VISUAL_PART, STAKE_PART, HIGHER_TIMEFRAME_SCALE
 
 knwon_prices = {}
+dense_prices = {}
 
 class simpleCandle():
     def __init__(self, o, c, h, l, v, index = 0):
@@ -41,18 +42,11 @@ class simpleCandle():
         self.thick_upper = False          # upper wick taller or lower wick
         self.thick_lower = False          #
         
-
-
     def ochl(self):
         return self.o, self.c, self.h, self.l
 
-def calculateHA(prev, current, index):
-    hC = (current.o + current.c + current.h + current.l)/4
-    hO = (prev.o + prev.c)/2
-    hH = max(current.o, current.h, current.c)
-    hL = min(current.o, current.h, current.c)
-    hV = current.v
-    return simpleCandle(hO, hC, hH, hL, hV, index)
+    def ochlv(self):
+        return self.o, self.c, self.h, self.l, self.v
 
 def extract_ochlv(filepath):
     O, C, H, L, V = [], [], [], [], []
@@ -69,17 +63,42 @@ def extract_ochlv(filepath):
 
 def fetch_prices(asset_name):
     global knwon_prices
+    global dense_prices
     O, C, H, L, V = extract_ochlv(asset_name)
     knwon_prices[asset_name] = [simpleCandle(o,c,h,l,v,i) for i, (o,c,h,l,v) in enumerate(zip(O,C,H,L,V))]
+
+    candles = knwon_prices[asset_name]
+
+    condensed = []
+    for i in range(HIGHER_TIMEFRAME_SCALE,len(candles),HIGHER_TIMEFRAME_SCALE):
+        O = candles[i-HIGHER_TIMEFRAME_SCALE].o
+        C = candles[i-1].c
+        H = max(candles[i-HIGHER_TIMEFRAME_SCALE:i], key = lambda _ : _.h).h
+        L = min(candles[i-HIGHER_TIMEFRAME_SCALE:i], key = lambda _ : _.l).l
+        V = sum(_.v for _ in candles[i-HIGHER_TIMEFRAME_SCALE:i])
+        I = candles[i-1].index
+        condensed.append(simpleCandle(O,C,H,L,V,I))
+
+    dense_prices[asset_name] = condensed
+           
 
 def get_candles(asset_name, index):
 
     if asset_name not in knwon_prices:
         fetch_prices(asset_name)
 
-    #HARDCODE
-    
     for candle in knwon_prices[asset_name][int(index)-(200-140):]:
+        yield candle
+
+def get_dense(asset_name, index):
+
+    if asset_name not in dense_prices:
+        fetch_prices(asset_name)
+
+    initial_ind = max(0, (int(index)-60+VISUAL_PART) - VISUAL_PART*HIGHER_TIMEFRAME_SCALE)
+    range_selector = filter(lambda _ : _.index >= initial_ind, dense_prices[asset_name])
+
+    for candle in range_selector:
         yield candle
 
 class ChainUnitType():
@@ -130,6 +149,7 @@ class ChainedFeature():
         self.source = source
         self.start_point = start_point
         self.candles = self.pre_process_candles()
+        self.dence_candles = self.pre_process_candles(get_dense(source, start_point), only_visual = True)
 
         self.feature_level = 0
 
@@ -148,20 +168,24 @@ class ChainedFeature():
         self.basic_timing_per_level = {0:30,
                                        1:30,
                                        2:30}
-    def pre_process_candles(self):
-        candles_generator = get_candles(self.source, self.start_point)
+    def pre_process_candles(self, source = None, only_visual = False):
+
+        if not source:
+            candles_generator = get_candles(self.source, self.start_point)
+        else:
+            candles_generator = source
+
         candles = []
         index_shift = 0
+        limit = VISUAL_PART + STAKE_PART if not only_visual else VISUAL_PART
 
         for candle in candles_generator:
             candle.index -= index_shift
 
-            if len(candles) >= VISUAL_PART + STAKE_PART:
+            if len(candles) >= limit:
                 break
 
             if candles and len(candles) < VISUAL_PART:
-
-                candles[-1].ha = calculateHA(candles[-1], candle, candle.index)
 
                 upper_next, lower_next = max(candle.o, candle.c), min(candle.o, candle.c)
                 upper_prev, lower_prev = max(candles[-1].o, candles[-1].c), min(candles[-1].o, candles[-1].c)
@@ -181,12 +205,20 @@ class ChainedFeature():
                 if candle.h > candles[-1].h and candle.l < candles[-1].l:
                     candle.weak_pierce_prev = True
 
-                if candle.h > candles[-1].h:
+                high_delta = candle.h - candles[-1].h
+                low_delta = candles[-1].l - candle.l
+
+                if high_delta >= 0 and low_delta < 0:
                     candle.overhigh = True
 
-                elif candle.l < candles[-1].l:
+                elif low_delta >=0 and high_delta < 0:
                     candle.overlow = True
 
+                elif high_delta >=0 and low_delta >=0:
+                    if abs(high_delta) > abs(low_delta):
+                        candle.overhigh = True
+                    else:
+                        candle.overlow = True
                 
                 if upper_next <= upper_prev and lower_next >= lower_prev:
                     candle.inner = True
@@ -205,8 +237,6 @@ class ChainedFeature():
                     candle.down_from_within = True
                     candle.down_within_p1 = lower_prev
                     candle.down_within_p2 = lower_next
-
-
 
                     
             candles.append(candle)
@@ -232,8 +262,8 @@ class ChainedFeature():
                 min_low = candle.l
                 min_low_i = i + VISUAL_PART
 
-        low_range = anchor - min_low
-        high_range = max_high - anchor
+        low_range = max_high - min_low
+        high_range = max_high - min_low
         low_first = min_low_i < max_high_i
 
         if high_range > low_range and min_low > decision_candle.l:
@@ -263,8 +293,6 @@ class ChainedFeature():
             self.candles[max_high_i].from_price = self.candles[max_high_i].h
             self.candles[max_high_i].to_price = min_low
             self.burn_ind = max_high_i
-
-
 
 
     def get_question_candles(self):
@@ -321,10 +349,32 @@ class ChainedFeature():
                 elif candle.l < high_low_line[-1][1]:
                     high_low_line[-1] = [candle.index, candle.l]
                     last_high = False
-
         special_lines.append(high_low_line)
 
         return special_lines
+
+    def get_high_tf_context(self):
+        selected_candles = self.dence_candles 
+        high_low_line = []
+        last_high = False
+        for i, candle in enumerate(selected_candles):
+            if candle.overhigh:
+                if not last_high or not high_low_line:
+                    high_low_line.append([len(high_low_line), candle.h])
+                    last_high = True
+                elif candle.h > high_low_line[-1][1]:
+                    high_low_line[-1] = [len(high_low_line)-1, candle.h]
+                    last_high = True
+                
+            elif candle.overlow:
+                if last_high or not high_low_line:
+                    high_low_line.append([len(high_low_line), candle.l])
+                    last_high = False
+                elif candle.l < high_low_line[-1][1]:
+                    high_low_line[-1] = [len(high_low_line)-1, candle.l]
+                    last_high = False
+
+        return high_low_line
 
 
     def get_all_candles(self):
@@ -491,6 +541,7 @@ class ChainedModel():
 
         self.burning_chain = []
         self.burning_in_work = []
+        #HARDCODE
         self.burning_size = 5 
         self.burn_tick = 0
 
@@ -605,7 +656,8 @@ class ChainedModel():
             next_feature = self.active_chain.get_next_feature()
 
         if not next_feature in self.burning_chain:
-            self.burning_chain.append(next_feature)
+            if random.randint(0,10)%3 == 0:
+                self.burning_chain.append(next_feature)
 
         return next_feature
 

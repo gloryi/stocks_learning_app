@@ -1,6 +1,7 @@
 # User defined data
 .json
 api_keys.py
+semantical_affirmations.csv
 *.jpg
 *.png
 # Byte-compiled / optimized / DLL files

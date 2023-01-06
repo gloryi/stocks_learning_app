@@ -89,7 +89,7 @@ class ChainedEntity():
         self.chained_feature = chained_feature
         self.features_chain = features_chain
         self.uid = chained_feature.source + str(chained_feature.start_point)
-        self.iuid = chained_feature.start_point
+        self.iuid = int(features_chain.chain_no)**2
 
         self.burn_mode = self.chained_feature.is_burning
         self.locked = False
@@ -137,7 +137,7 @@ class ChainedEntity():
         if not self.burn_mode:
             self.time_estemated = self.chained_feature.get_timing() / 3
         else:
-            self.time_estemated = self.chained_feature.get_timing() / 2
+            self.time_estemated = (self.chained_feature.get_timing() / 4) * 3
 
 
 
@@ -344,8 +344,9 @@ class ChainedEntity():
         else:
             return self.chained_feature.get_lines_with_offset(self.active_index, VISUAL_PART)
 
+    def produce_high_tf_pattern(self):
+        return self.chained_feature.get_high_tf_context()
 
-                                                                 
 
     def variate(self):
         if self.variation_on_rise:
@@ -356,8 +357,10 @@ class ChainedEntity():
         if self.variation == 0:
             if self.mode == "QUESTION":
                 avaliable_numbers = [_ for _ in range(10) if _ not in self.constant_variations]
-                self.constant_variations.append(random.choice(avaliable_numbers))
-                self.constant_variations.pop(0)
+                if len(self.constant_variations)%2:
+                    self.constant_variations.append(random.choice(avaliable_numbers))
+                else:
+                    self.constant_variations.pop(0)
             else:
                 self.constant_variations = []
 
@@ -580,6 +583,10 @@ class ChainedDrawer():
             if line.mode != "QUESTION":
                 green1, green2, red1, red2, mixed = colors.palettes[int(line.iuid)%len(colors.palettes)] 
 
+            #else:
+                #_, green2, _, red2, _ = colors.palettes[int(line.iuid)%len(colors.palettes)] 
+
+
 
 
             if candle.green or fgreen:
@@ -621,10 +628,6 @@ class ChainedDrawer():
                        entry = None, stop = None, profit = None, idle = None,
                        v_rising = False, last = False):
             i = candle.index - p1
-            #if 0 in line.constant_variations and line.variation <= 0 and candle.ha and candle.green != candle.ha.green:
-            #if False:
-                #col = getCandleCol(candle.ha, v_rising, opposite_blend=True)
-            #else:
 
             w0 = 0.5
             w1 = 0.25
@@ -688,9 +691,15 @@ class ChainedDrawer():
             
             if candle.to_offset and candle.to_price and not line.mode == "QUESTION" and line.burn_mode:
                 p_connected = fitTozone(candle.to_price, minP, maxP) 
+                p_initial = fitTozone(candle.from_price, minP, maxP)
                 i_connected = candle.index + candle.to_offset - p1 
 
-                drwLineZon(zone, 1-candle.from_price,(c0)/dpth,1-p_connected,(i_connected+w0)/dpth,line.palette[4],strk=10)
+                drwLineZon(zone, 1-p_initial,0,1-p_initial,1,(150,255,150),strk=1)
+                drwLineZon(zone, 1-p_connected,0,1-p_connected,1,(255,150,255),strk=1)
+
+                drwLineZon(zone, 1-p_initial,(c0)/dpth,1-p_connected,(c0)/dpth,line.palette[4],strk=10)
+                drwLineZon(zone, 1-p_connected,(c0)/dpth,1-p_connected,(i_connected+w0)/dpth,line.palette[4],strk=10)
+
 
 
             if False:
@@ -901,6 +910,7 @@ class ChainedDrawer():
 
         candles = line.produce_candles()
         lines = line.produce_lines()
+        high_tf_line = line.produce_high_tf_pattern()
 
         dpth = len(candles) + 1
         PIXELS_PER_CANDLE = 10
@@ -935,7 +945,6 @@ class ChainedDrawer():
                                                    inter_color(col1[1], col2[1], percent),
                                                    inter_color(col1[2], col2[2], percent))
 
-                #drwLineZon(draw_tasks[0][1], 1-y1,x1,1-y2,x2,colors.col_bt_down, strk = 10)
 
 
         
@@ -954,13 +963,23 @@ class ChainedDrawer():
 
         if line.mode != "QUESTION":
             for special_line in lines:
-                for p1, p2 in zip(special_line[:-1], special_line[1:]):
+                for i, (p1, p2) in enumerate(zip(special_line[:-1], special_line[1:])):
                     y1 = fitTozone(p1[1], minV, maxV)
                     y2 = fitTozone(p2[1], minV, maxV)
                     x1 = (p1[0]-o1+0.5)/dpth
                     x2 = (p2[0]-o1+0.5)/dpth
                     rgb_col = interpolate(colors.white, colors.col_black, abs(line.variation/40))
                     drwLineZon(draw_tasks[0][1], 1-y1,x1,1-y2,x2,rgb_col, strk = 2)
+        else:
+            minH = min(high_tf_line, key = lambda _ : _[1])[1]
+            maxH = max(high_tf_line, key = lambda _ : _[1])[1]
+            for i,(p1, p2) in enumerate(zip(high_tf_line[:-1], high_tf_line[1:])):
+                y1 = fitTozone(p1[1], minH, maxH)*0.4
+                y2 = fitTozone(p2[1], minH, maxH)*0.4
+                x1 = (p1[0]+0.5)/(dpth*(len(high_tf_line)/VISUAL_PART)/0.4)
+                x2 = (p2[0]+0.5)/(dpth*(len(high_tf_line)/VISUAL_PART)/0.4)
+                rgb_col = interpolate(colors.white, colors.col_black, abs(line.variation/40))
+                drwLineZon(draw_tasks[0][1], 1-y1,x1,1-y2,x2,rgb_col, strk = 2)
  
             
 

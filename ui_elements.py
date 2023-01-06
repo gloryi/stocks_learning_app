@@ -131,7 +131,7 @@ class UpperLayout():
                                             clip_color(self.bg_color[2]+self.variation*3)))
 
         base_line_color = colors.col_wicked_darker 
-        inter_color = lambda v1, v2, p: v1 + (v2-v1)*p
+        inter_color = lambda v1, v2, p: clip_color(v1 + (v2-v1)*p)
         interpolate = lambda col1, col2, percent: (inter_color(col1[0], col2[0], self.timing_ratio),
                                                    inter_color(col1[1], col2[1], self.timing_ratio),
                                                    inter_color(col1[2], col2[2], self.timing_ratio))

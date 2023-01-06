@@ -17,8 +17,8 @@ pygame.init()
 display_surface = pygame.display.set_mode((W, H))
 pygame.display.set_caption('STOCKS_TRAINER_067')
 trans_surface = pygame.Surface((W, H))
-trans_surface.set_alpha(200)
-trans_surface.fill((30,0,30))
+trans_surface.set_alpha(180)
+trans_surface.fill((40,0,40))
 
 time_to_cross_screen = 16000
 time_to_appear = 4000
@@ -37,14 +37,15 @@ active_balance = 100
 
 is_pause_displayed = False
 paused = True
+skip_next = False
 
 delta_timer = global_timer(pygame)
 
 upper_stats = UpperLayout(pygame, display_surface)
 
 new_line_counter = Counter(upper_stats)
-pause_counter = Counter(bpm = 1/2)
-screenshot_timer = Counter(bpm = (1/2)*20)
+pause_counter = Counter(bpm = 1/3)
+screenshot_timer = Counter(bpm = 1)
 
 game = ChainedProcessor(pygame, display_surface, upper_stats, "hanzi chineese", STOCKS_DATA,
                         (60*1000)/BPM)
@@ -69,7 +70,7 @@ meta_minor = []
 base_font = pygame.font.match_font("setofont")
 base_font = pygame.font.Font(base_font, 50)
 minor_font = pygame.font.match_font("setofont")
-minor_font = pygame.font.Font(minor_font, 24)
+minor_font = pygame.font.Font(minor_font, 30)
 
 upper_stats.active_balance = 100
     
@@ -90,19 +91,24 @@ def screenshot_to_image(pil_image):
     data = pil_image.tobytes()
     py_image =  pygame.image.fromstring(data, size, mode)
     py_image =  py_image.convert()
-    image_scaled = pygame.transform.scale(py_image, (W//5, H//4)) 
+    image_scaled = pygame.transform.scale(py_image, (W//3, H//3)) 
     return image_scaled
 
  
 for time_delta in delta_timer:
+
+    if skip_next:
+        skip_next = False
+        continue
+
     fpsClock.tick(30)
 
     if paused and not is_pause_displayed:
         display_surface.fill(white)
         for i, active_screenshot in enumerate(pause_screenshots):
-            I = (i - i%5)//4
-            J = i%5
-            display_surface.blit(active_screenshot, ((W//5)*J,(H//4)*I))
+            I = (i - i%3)//3
+            J = i%3
+            display_surface.blit(active_screenshot, ((W//3)*J,(H//3)*I))
 
         display_surface.blit(trans_surface, (0,0))
 
@@ -136,7 +142,7 @@ for time_delta in delta_timer:
             for i, line in enumerate(meta_minor):
                 place_text(line,
                             W//2,
-                            H//2-500 + 20*(i+1),
+                            H//2-500 + 30*(i+1),
                             transparent = True,
                             renderer = minor_font,
                             base_col = (colors.col_bt_pressed))
@@ -148,7 +154,7 @@ for time_delta in delta_timer:
         if keys[pygame.K_SPACE]:
             paused = False
 
-            if len(pause_screenshots) >= 20:
+            if len(pause_screenshots) >= 10:
                 pause_screenshots = []
 
             if len(pause_progression) >=5:
@@ -177,6 +183,7 @@ for time_delta in delta_timer:
         upper_stats.active_balance = active_balance
         paused = True
 
+
     if new_line_counter.is_tick(time_delta):
         pyautogui.moveTo(W//3*2, H//2)
         next_tick_time, meta, meta_minor = active_game.add_line()
@@ -187,6 +194,9 @@ for time_delta in delta_timer:
         #top, left = named_window.topleft
         #bottom, right = named_window.bottomright
         pause_screenshots.append(screenshot_to_image(pyautogui.screenshot(region=(0, 0, W, H))))
+        skip_next = True
+
+        #chmod_test 2
 
 
     active_stats.redraw()

@@ -2,6 +2,9 @@ import os
 import csv
 import random
 target_directory = "/home/gloryi/Pictures/FlickrSets/stocks_datasets"
+#target_directory = "/home/gloryi/Pictures/MovieShots"
+#target_directory = "/home/gloryi/Pictures/OldPhotos"
+#target_directory = "/home/gloryi/Pictures/Windows 10 Spotlight"
 #target_directory = os.path.join(os.getcwd(), "stocks_datasets") 
 selected_files = []
 
@@ -10,8 +13,8 @@ for _r, _d, _f in os.walk(target_directory):
         selected_files.append(os.path.join(_r, f))
 
 def generate_random_positions(selected_file):
-    random_pos = random.randint(100,99000)
-    for incr in range(5):
+    random_pos = random.randint(250,99000)
+    for incr in range(10):
         yield random_pos+incr*30
 
 
