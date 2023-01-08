@@ -91,7 +91,7 @@ def screenshot_to_image(pil_image):
     data = pil_image.tobytes()
     py_image =  pygame.image.fromstring(data, size, mode)
     py_image =  py_image.convert()
-    image_scaled = pygame.transform.scale(py_image, (W//3, H//3)) 
+    image_scaled = pygame.transform.scale(py_image, (W//2, H//2)) 
     return image_scaled
 
  
@@ -106,14 +106,14 @@ for time_delta in delta_timer:
     if paused and not is_pause_displayed:
         display_surface.fill(white)
         for i, active_screenshot in enumerate(pause_screenshots):
-            I = (i - i%3)//3
-            J = i%3
-            display_surface.blit(active_screenshot, ((W//3)*J,(H//3)*I))
+            I = (i - i%2)//2
+            J = i%2
+            display_surface.blit(active_screenshot, ((W//2)*J,(H//2)*I))
 
         display_surface.blit(trans_surface, (0,0))
 
 
-        text = font.render("PAUSED", True, colors.col_bg_darker)
+        text = font.render("*"*(len(pause_progression)) , True, colors.col_bg_darker)
         textRect = text.get_rect()
         textRect.center = (W//2, H//2)
         display_surface.blit(text, textRect)
@@ -121,12 +121,12 @@ for time_delta in delta_timer:
         if pause_progression:
             total = sum(int(_[:-1]) for _ in pause_progression) - 100*len(pause_progression)
             current_progress = pause_progression + ["#" for _ in range(5-len(pause_progression))]
-            place_text(" ".join(current_progress) + "||" + f" {total}$" + f" | {max_fallback}/4 ERR | {max_streak}/10 GAINS",
+            place_text(" ".join(current_progress) + "||" + f" {total}$" + f" \\{max_fallback}/{max_streak}",
                         W//2,
                         H//2-70 - 40,
                         transparent = False,
                         renderer = None,
-                        base_col = (colors.dark_green if active_count>0 or max_fallback >= 4 else colors.col_error))
+                        base_col = (colors.dark_green if active_balance > 100 else colors.col_error))
             
 
         if meta:
@@ -135,7 +135,7 @@ for time_delta in delta_timer:
                 place_text(chunk,
                             W//2,
                             H//2+70 + 40*(i+1),
-                            transparent = False,
+                            transparent = True,
                             renderer = None,
                             base_col = (colors.col_bt_pressed))
         if meta_minor:
@@ -154,8 +154,6 @@ for time_delta in delta_timer:
         if keys[pygame.K_SPACE]:
             paused = False
 
-            if len(pause_screenshots) >= 10:
-                pause_screenshots = []
 
             if len(pause_progression) >=5:
                 pause_progression = []
@@ -190,13 +188,16 @@ for time_delta in delta_timer:
         new_line_counter.modify_bpm(next_tick_time)
 
     if screenshot_timer.is_tick(time_delta):
-        #named_window = pygetwindow.getWindowsWithTitle("STOCKS_TRAINER_067")
-        #top, left = named_window.topleft
-        #bottom, right = named_window.bottomright
-        pause_screenshots.append(screenshot_to_image(pyautogui.screenshot(region=(0, 0, W, H))))
-        skip_next = True
+        if not paused:
 
-        #chmod_test 2
+            if len(pause_screenshots)<5:
+                pause_screenshots.append(screenshot_to_image(pyautogui.screenshot(region=(0, 0, W, H))))
+            else:
+                del pause_screenshots[0]
+                pause_screenshots.append(screenshot_to_image(pyautogui.screenshot(region=(0, 0, W, H))))
+
+
+            skip_next = True
 
 
     active_stats.redraw()

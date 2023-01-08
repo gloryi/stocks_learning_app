@@ -139,8 +139,8 @@ class UpperLayout():
 
         self.pygame_instance.draw.circle(self.display_instance,
                                   line_color,
-                                  (0, H//2),
-                                   (W)*self.timing_ratio, width=10)
+                                  (0, H),
+                                   (H)*self.timing_ratio, width=10)
 
 
         line_color = (int((235)*(1-self.percent)),int((235)*(self.percent)),0)

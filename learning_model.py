@@ -262,8 +262,8 @@ class ChainedFeature():
                 min_low = candle.l
                 min_low_i = i + VISUAL_PART
 
-        low_range = max_high - min_low
-        high_range = max_high - min_low
+        low_range = anchor - min_low
+        high_range = max_high - anchor
         low_first = min_low_i < max_high_i
 
         if high_range > low_range and min_low > decision_candle.l:
@@ -541,7 +541,6 @@ class ChainedModel():
 
         self.burning_chain = []
         self.burning_in_work = []
-        #HARDCODE
         self.burning_size = 5 
         self.burn_tick = 0
 

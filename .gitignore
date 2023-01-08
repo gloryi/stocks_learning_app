@@ -2,6 +2,7 @@
 .json
 api_keys.py
 semantical_affirmations.csv
+trading_affirmations.csv
 *.jpg
 *.png
 # Byte-compiled / optimized / DLL files
