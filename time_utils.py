@@ -48,6 +48,10 @@ class Counter():
     def drop_elapsed(self):
         self.time_elapsed = 0
 
+    def get_percent(self):
+        return self.time_elapsed/self.drop_time
+
+
 class Progression():
     def __init__(self,
                  update_counter,

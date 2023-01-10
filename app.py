@@ -17,8 +17,11 @@ pygame.init()
 display_surface = pygame.display.set_mode((W, H))
 pygame.display.set_caption('STOCKS_TRAINER_067')
 trans_surface = pygame.Surface((W, H))
-trans_surface.set_alpha(180)
+trans_surface.set_alpha(100)
 trans_surface.fill((40,0,40))
+trans_surface2 = pygame.Surface((W, H))
+trans_surface2.set_alpha(50)
+trans_surface2.fill((40,0,40))
 
 time_to_cross_screen = 16000
 time_to_appear = 4000
@@ -35,8 +38,17 @@ streak = 0
 max_streak = 0
 active_balance = 100
 
-is_pause_displayed = False
 paused = True
+quadra_r = 0
+quadra_phase = "INHALE"
+clip_color = lambda _ : 0 if _ <=0 else 255 if _ >=255 else int(_)
+inter_color = lambda v1, v2, p: clip_color(v1 + (v2-v1)*p)
+interpolate = lambda col1, col2, percent: (inter_color(col1[0], col2[0], percent),
+                                           inter_color(col1[1], col2[1], percent),
+                                           inter_color(col1[2], col2[2], percent))
+quadra_col_1 = colors.feature_bg
+quadra_col_2 = colors.col_bt_pressed 
+
 skip_next = False
 
 delta_timer = global_timer(pygame)
@@ -46,6 +58,7 @@ upper_stats = UpperLayout(pygame, display_surface)
 new_line_counter = Counter(upper_stats)
 pause_counter = Counter(bpm = 1/3)
 screenshot_timer = Counter(bpm = 1)
+quadra_timer = Counter(bpm = 20)
 
 game = ChainedProcessor(pygame, display_surface, upper_stats, "hanzi chineese", STOCKS_DATA,
                         (60*1000)/BPM)
@@ -102,15 +115,66 @@ for time_delta in delta_timer:
         continue
 
     fpsClock.tick(30)
+    display_surface.fill(white)
 
-    if paused and not is_pause_displayed:
+    if paused:
+
         display_surface.fill(white)
         for i, active_screenshot in enumerate(pause_screenshots):
             I = (i - i%2)//2
             J = i%2
             display_surface.blit(active_screenshot, ((W//2)*J,(H//2)*I))
 
+        if quadra_timer.is_tick(time_delta):
+            if quadra_phase == "INHALE":
+                quadra_phase = "HOLD_IN"
+                quadra_col_1 = colors.col_bt_pressed
+                quadra_col_2 = colors.red2
+                if pause_screenshots:
+                    pause_screenshots.append(pause_screenshots.pop(0))
+            elif quadra_phase == "HOLD_IN":
+                quadra_phase = "EXHALE"
+                quadra_col_1 = colors.red2
+                quadra_col_2 = colors.option_fg
+            elif quadra_phase == "EXHALE":
+                quadra_phase = "HOLD_OUT"
+                quadra_col_1 = colors.option_fg
+                quadra_col_2 = colors.feature_bg
+                if pause_screenshots:
+                    pause_screenshots.append(pause_screenshots.pop(0))
+            else:
+                quadra_phase = "INHALE"
+                quadra_col_1 = colors.feature_bg
+                quadra_col_2 = colors.col_bt_pressed
+
+        if quadra_phase == "INHALE":
+            quadra_w_perce1 = quadra_timer.get_percent()
+            quadra_w_perce2 = 1.0 
+        elif quadra_phase == "HOLD_IN":
+            quadra_w_perce1 = 1.0
+            quadra_w_perce2 = 1 - quadra_timer.get_percent()
+        elif quadra_phase == "EXHALE":
+            quadra_w_perce1 = 1 - quadra_timer.get_percent()
+            quadra_w_perce2 = 0.0
+        else:
+            quadra_w_perce1 = 0.0
+            quadra_w_perce2 = quadra_timer.get_percent()
+
+        trans_surface.fill((40,0,40))
+        trans_surface2.fill((40,0,40))
+        pygame.draw.circle(trans_surface,
+                              interpolate(quadra_col_1, quadra_col_2, quadra_timer.get_percent()),
+                              (W//2, H//2),
+                               (H//2-100)*quadra_w_perce1+100)
+        pygame.draw.circle(trans_surface,
+                              interpolate(quadra_col_1, quadra_col_2, quadra_timer.get_percent()**2),
+                              (W//2, H//2),
+                               (H//2-50)*quadra_w_perce2+50, width = 3)
+            
+
+
         display_surface.blit(trans_surface, (0,0))
+        display_surface.blit(trans_surface2, (0,0))
 
         if pause_progression:
             total = sum(int(_[:-1]) for _ in pause_progression) - 100*len(pause_progression)
@@ -143,11 +207,11 @@ for time_delta in delta_timer:
                             transparent = True,
                             renderer = minor_font,
                             base_col = (colors.col_bt_pressed))
-        is_pause_displayed = True
 
     if paused:
         pygame.display.update()
         keys = pygame.key.get_pressed()
+
         if keys[pygame.K_SPACE]:
             paused = False
 
@@ -161,8 +225,6 @@ for time_delta in delta_timer:
                 streak = 0
                 max_streak = 0
 
-            is_pause_displayed = False
-
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
@@ -170,7 +232,6 @@ for time_delta in delta_timer:
                 quit()
         continue
 
-    display_surface.fill(white)
 
     if pause_counter.is_tick(time_delta):
         pause_progression.append(f"{active_balance}$")
@@ -187,7 +248,7 @@ for time_delta in delta_timer:
     if screenshot_timer.is_tick(time_delta):
         if not paused:
 
-            if len(pause_screenshots)<5:
+            if len(pause_screenshots) < 9:
                 pause_screenshots.append(screenshot_to_image(pyautogui.screenshot(region=(0, 0, W, H))))
             else:
                 del pause_screenshots[0]
