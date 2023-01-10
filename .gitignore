@@ -5,6 +5,8 @@ semantical_affirmations.csv
 trading_affirmations.csv
 *.jpg
 *.png
+Affirm/
+Knowledge/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

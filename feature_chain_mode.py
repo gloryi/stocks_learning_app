@@ -5,7 +5,8 @@ from math import sqrt
 from itertools import compress, groupby
 import random
 import re
-from config import W, H, CYRILLIC_FONT, CHINESE_FONT, VISUAL_PART, STAKE_PART, META_SCRIPT, META_MINOR
+import os
+from config import W, H, CYRILLIC_FONT, CHINESE_FONT, VISUAL_PART, STAKE_PART, META_DIR, META_MINOR_DIR
 from colors import col_bg_darker, col_wicked_darker
 from colors import col_active_darker, col_bg_lighter
 from colors import col_wicked_lighter, col_active_lighter
@@ -14,6 +15,7 @@ import colors
 import pygame.gfxdraw
 
 LAST_EVENT = "POSITIVE"
+LAST_META = None
 NEW_EVENT = False
 ######################################
 ### DATA PRODUCER
@@ -25,8 +27,8 @@ class ChainedsProducer():
         self.label = label 
         self.meta_path = meta_path
         self.minor_meta = minor_meta
-        self.meta_lines = self.extract_meta(self.meta_path) if self.meta_path else []
-        self.minor_lines = self.extract_meta(self.minor_meta) if self.minor_meta else []
+        self.meta_lines = self.extract_meta_dir(self.meta_path) if self.meta_path else []
+        self.minor_lines = self.extract_meta_dir(self.minor_meta) if self.minor_meta else []
         self.chains = self.prepare_data()
         self.active_chain = self.chains.get_active_chain()
         self.ui_ref = ui_ref
@@ -37,6 +39,14 @@ class ChainedsProducer():
             for line in metafile:
                 meta.append(line[:-1].upper())
         return meta
+
+    def extract_meta_dir(self, meta_path):
+        meta_lines = []
+        for _r, _d, _f in os.walk(meta_path):
+            for f in _f:
+                meta_lines += self.extract_meta(os.path.join(_r, f))
+        return meta_lines
+
 
     def prepare_data(self):
         data_extractor = raw_extracter(self.csv_path) 
@@ -84,6 +94,8 @@ class ChainedEntity():
                  W,
                  H):
 
+        global LAST_META
+        LAST_META = None
         self.W, self.H = W, H
 
         self.chained_feature = chained_feature
@@ -104,7 +116,6 @@ class ChainedEntity():
 
         self.mode = "QUESTION"
         
-        self.feedback = None
         self.done = True
         self.time_perce_reserved = 0.0
 
@@ -125,7 +136,7 @@ class ChainedEntity():
 
         self.variation = 0
         self.variation_on_rise = True
-        self.constant_variations = random.sample([_ for _ in range(10)], 4)
+        self.constant_variations = random.sample([_ for _ in range(11)], 4)
         self.palette = random.choice(colors.palettes) 
 
         self.question_index = VISUAL_PART
@@ -144,6 +155,7 @@ class ChainedEntity():
     def check_sltp_hit(self):
         global LAST_EVENT
         global NEW_EVENT
+        global LAST_META
         LAST_EVENT = "POSITIVE"
         NEW_EVENT = True
 
@@ -154,26 +166,71 @@ class ChainedEntity():
         candles = self.chained_feature.get_all_candles()
         triggered = False
         within = lambda price, candle: price <= candle.h and price >= candle.l
+
+        stop_first = False
+        profit_first = False
+
+        stop_counted = False
+        stop_counted_ex = False
+        profit_counted = False
+        profit_counted_ex = False
+
         for i, c in enumerate(candles[VISUAL_PART:]):
+
             if within(self.entry, c):
                 self.entry_activated = True
                 triggered = True
 
-            if triggered and within(self.sl, c):
+            if not triggered and within(self.sl, c):
+                stop_counted_ex = True
+
+            if triggered and not profit_first and within(self.sl, c):
                 self.stop_activated = True
+                stop_counted = True
+                stop_first = True
+
                 LAST_EVENT = "ERROR"
 
                 if not self.burn_mode:
                     self.chained_feature.register_error()
                     self.features_chain.update_errors(register_new=True)
-
-                return False
             
-            if triggered and within(self.tp, c):
+            if not triggered and within(self.tp, c):
+                profit_counted_ex = True
+
+            if triggered and not stop_first and within(self.tp, c):
                 self.profit_activated = True
+                profit_counted = True
+                profit_first = True
+
                 LAST_EVENT = "POSITIVE"
-                return True
+
                 
+        stp, entr, prof = stop_counted or stop_counted_ex, self.entry_activated, profit_counted or profit_counted_ex
+
+        direction = "LONG"
+        if self.sl > self.entry:
+            direction = "SHORT"
+
+        if not stp and not entr and not prof:
+            LAST_META = "PATHETIC"
+        elif stp and not entr and not prof:
+                LAST_META = "PAPERCUT" if direction == "SHORT" else  "EXECUTION"
+        elif stp and entr and not prof:
+                LAST_META = "WOUNDED" if direction == "SHORT" else "GUNSHOT"
+        elif stp and entr and prof:
+                LAST_META = "MASACRE" if direction == "SHORT" else "BLAST"
+        elif not stp and entr and not prof:
+                LAST_META = "CLATCH" if direction == "SHORT" else "FLEED"
+        elif not stp and entr and prof:
+            LAST_META = "STUBBED" if direction == "SHORT" else "NAILED"
+        elif not stp and not entr and prof:
+            LAST_META = "DROP" if direction == "SHORT" else "MISFIRE"
+                
+
+        if profit_first:
+            return True
+
         LAST_EVENT = "ERROR"
 
         return False
@@ -313,10 +370,11 @@ class ChainedEntity():
 
         options_x_corners = [W//2 - W//4, W//2 - W//8, W//2 + W//8, W//2 + W//4]
         options_y_corners = [H-50,      H-50,    H-50,  H-50]
-        options_w = 200
+        options_w = 150
         options_h = 50
 
         options = ["/ LONG /", "\\ DUST /", "/ RAIN \\", "\\ SHORT \\"]
+        opt_colors = [colors.option_fg, colors.option_bg, colors.red2, colors.red1]
         for i, (x1, y1) in enumerate(zip(options_x_corners, options_y_corners)):
             ctx = options[i]
             ctx_x = x1
@@ -327,7 +385,7 @@ class ChainedEntity():
             graphical_objects.append(WordGraphical(ctx,
                                                    cx,
                                                    cy,
-                                                   set_color(ctx),
+                                                   opt_colors[i],
                                                    None,
                                                    font = set_font(ctx),
                                                    font_size = set_size(ctx)))
@@ -336,7 +394,10 @@ class ChainedEntity():
 
     def produce_candles(self):
         if self.mode == "QUESTION":
-            return self.chained_feature.get_question_candles()
+            if self.active_index_float <= STAKE_PART/4:
+                return self.chained_feature.get_mid_candles()
+            else:
+                return self.chained_feature.get_question_candles()
         else:
             return self.chained_feature.get_candles_with_offset(self.active_index, VISUAL_PART)
 
@@ -358,7 +419,7 @@ class ChainedEntity():
 
         if self.variation == 0:
             if self.mode == "QUESTION":
-                avaliable_numbers = [_ for _ in range(10) if _ not in self.constant_variations]
+                avaliable_numbers = [_ for _ in range(11) if _ not in self.constant_variations]
                 if len(self.constant_variations)%2:
                     self.constant_variations.append(random.choice(avaliable_numbers))
                 else:
@@ -371,11 +432,6 @@ class ChainedEntity():
             self.variation_on_rise = False
         elif self.variation < -40:
             self.variation_on_rise = True
-
-    def fetch_feedback(self):
-        to_return = self.feedback
-        self.feedback = None
-        return to_return
 
 ######################################
 ### LINES HANDLER GRAPHICS
@@ -473,7 +529,7 @@ class ChainedDrawer():
 
         options_x_corners = [W//2 - W//4, W//2 - W//8, W//2 + W//8, W//2 + W//4]
         options_y_corners = [H-50,      H-50,    H-50,  H-50]
-        options_w = 200
+        options_w = 150
         options_h = 50
 
         for i, (x1, y1) in enumerate(zip(options_x_corners, options_y_corners)):
@@ -632,7 +688,7 @@ class ChainedDrawer():
 
         def drawCandle(zone, candle, minP, maxP, p1, p2,
                        entry = None, stop = None, profit = None, idle = None,
-                       v_rising = False, last = False):
+                       last = False):
             i = candle.index - p1
 
             w0 = 0.5
@@ -642,9 +698,7 @@ class ChainedDrawer():
 
             _o,_c,_h,_l = candle.ochl()
 
-            two_random = lambda : (random.choice([_o, _c, _h, _l]), random.choice([_o, _c, _h, _l]))
-
-            col = getCandleCol(candle, v_rising, fred=_o>_c,fgreen=_o<_c)
+            col = getCandleCol(candle, fred=_o>_c,fgreen=_o<_c)
 
             oline = fitTozone(_o, minP, maxP)
             cline = fitTozone(_c, minP, maxP)
@@ -708,7 +762,7 @@ class ChainedDrawer():
 
 
 
-            if False:
+            if last:
                 upper, lower = max(oline, cline), min(oline, cline)
 
                 drwLineZon(zone, 1-lwick,(c0)/dpth,1-lower,(c0)/dpth,col,strk=3)
@@ -721,10 +775,6 @@ class ChainedDrawer():
                 upper, lower = max(oline, cline), min(oline, cline)
 
                 if candle.thick_upper and 9 in line.constant_variations:
-                    #drwLineZon(zone, 1-hwick,(c0+0.1)/dpth,1-hwick-0.3/dpth,(c0)/dpth,col,strk=2)
-                    #hline = max(oline, cline)
-                    #mline = (hwick+hline)/2
-                    #drwLineZon(zone, 1-hwick,(c0)/dpth,1-mline,(c0-w1)/dpth,col,strk=2)
                     
                     drwLineZon(zone, 1-lwick,(c0)/dpth,1-lower,(c0)/dpth,col,strk=2)
                     drwLineZon(zone, 1-hwick,(c0-0.15)/dpth,1-upper,(c0-0.15)/dpth,col,strk=1)
@@ -870,6 +920,26 @@ class ChainedDrawer():
                     drwLineZon(zone, 1-lwick+0.5/dpth,(c0-0.15)/dpth,1-lwick+1.5/dpth,c0/dpth,col,strk=3)
                     drwLineZon(zone, 1-lwick+0.5/dpth,(c0+0.15)/dpth,1-lwick+1.5/dpth,c0/dpth,col,strk=3)
 
+                if candle.upbreak and 10 in line.constant_variations:
+                    upper_b = max(oline, cline)
+                    mid_wick = (upper_b+hwick)/2
+                    drwLineZon(zone, 1-mid_wick,(c0-0.2)/dpth,1-mid_wick,(c0+0.45)/dpth,col,strk=2)
+
+                if candle.upbreak and 10 in line.constant_variations:
+                    lower_b = min(oline, cline)
+                    mid_wick = (lwick+lower_b)/2
+                    drwLineZon(zone, 1-mid_wick,(c0-0.2)/dpth,1-mid_wick,(c0+0.45)/dpth,col,strk=3)
+
+                # if candle.higher_shelf_done:
+                #     p_connected = fitTozone(candle.higher_shelf_price, minP, maxP) 
+                #     i_connected = candle.index + candle.to_higher_shelf_off - p1 
+                #     drwLineZon(zone, 1-hwick,(c0)/dpth,1-p_connected,(i_connected+w0)/dpth,colors.col_black,strk=1)
+                #
+                # if candle.lower_shelf_done:
+                #     p_connected = fitTozone(candle.lower_shelf_price, minP, maxP) 
+                #     i_connected = candle.index + candle.to_lower_shelf_off - p1 
+                #     drwLineZon(zone, 1-lwick,(c0)/dpth,1-p_connected,(i_connected+w0)/dpth,colors.col_black,strk=1)
+
 
             if idle and (idle>=_l and idle<=_h or last):
                 line_level = fitTozone(idle, minP, maxP)
@@ -912,18 +982,17 @@ class ChainedDrawer():
                         entry=None, stop=None,
                         profit=None, idle = None):
 
-            prev_v = candles[0].v
 
             for i, candle in enumerate(candles):
                 if i == line.question_index-1:
                     drwLineZon(zone, 1,(i+0.5)/len(candles),0,(i+0.5)/len(candles),colors.col_bt_down, strk = 6)
 
-                v_rising = candle.v > prev_v
-                prev_v = candle.v
+                #v_rising = candle.v > prev_v
+                #prev_v = candle.v
                 last = i == len(candles)-1
                 drawCandle(zone, candle, minV, maxV, p1, p2,
                            entry=entry, stop=stop, profit=profit, idle=idle,
-                           v_rising = v_rising, last = last)
+                           last = last)
 
 
         candles = line.produce_candles()
@@ -988,29 +1057,27 @@ class ChainedDrawer():
                     x2 = (p2[0]-o1+0.5)/dpth
                     rgb_col = interpolate(colors.white, colors.col_black, abs(line.variation/40))
                     drwLineZon(draw_tasks[0][1], 1-y1,x1,1-y2,x2,rgb_col, strk = 2)
-        else:
+        if True:
             minH = min(high_tf_line, key = lambda _ : _[1])[1]
             maxH = max(high_tf_line, key = lambda _ : _[1])[1]
 
-            y1 = fitTozone(minV, minH, maxH)*0.4
-            y2 = fitTozone(maxV, minH, maxH)*0.4
-            x1 = (0)/(dpth*(len(high_tf_line)/VISUAL_PART)/0.4)
-            x2 = (len(high_tf_line))/(dpth*(len(high_tf_line)/VISUAL_PART)/0.4)
-            drwLineZon(draw_tasks[0][1], 1-y1,x1,1-y1,x2,colors.col_black, strk = 1)
-            drwLineZon(draw_tasks[0][1], 1-y2,x1,1-y2,x2,colors.col_black, strk = 1)
+            yH = fitTozone(minV, minH, maxH)*0.25
+            yL = fitTozone(maxV, minH, maxH)*0.25
+            yE = None
+            yP = None
 
             if line.entry:
-                y1 = fitTozone(line.entry, minH, maxH)*0.4
-                drwLineZon(draw_tasks[0][1], 1-y1,x1,1-y1,x2,(150,255,150), strk = 1)
+                yE = fitTozone(line.entry, minH, maxH)*0.25
             if line.tp:
-                y1 = fitTozone(line.tp, minH, maxH)*0.4
-                drwLineZon(draw_tasks[0][1], 1-y1,x1,1-y1,x2,(255,150,255), strk = 1)
+                yP = fitTozone(line.tp, minH, maxH)*0.25
 
             for i,(p1, p2) in enumerate(zip(high_tf_line[:-1], high_tf_line[1:])):
-                y1 = fitTozone(p1[1], minH, maxH)*0.4
-                y2 = fitTozone(p2[1], minH, maxH)*0.4
-                x1 = (p1[0]+0.5)/(dpth*(len(high_tf_line)/VISUAL_PART)/0.4)
-                x2 = (p2[0]+0.5)/(dpth*(len(high_tf_line)/VISUAL_PART)/0.4)
+                y1 = fitTozone(p1[1], minH, maxH)*0.25
+                y2 = fitTozone(p2[1], minH, maxH)*0.25
+                x0 = (p1[0]-2)/(dpth*(len(high_tf_line)/VISUAL_PART)/0.3) + 0.35
+                x1 = (p1[0]+0.5)/(dpth*(len(high_tf_line)/VISUAL_PART)/0.3) + 0.35
+                x2 = (p2[0]+0.5)/(dpth*(len(high_tf_line)/VISUAL_PART)/0.3) + 0.35
+                x3 = (p2[0]+2)/(dpth*(len(high_tf_line)/VISUAL_PART)/0.3) + 0.35
 
                 col1 = colors.white
                 col2 = colors.col_black
@@ -1019,14 +1086,24 @@ class ChainedDrawer():
                 upper = max(p1[1], p2[1])
 
                 if minV >= lower and minV <= upper and maxV >=lower and maxV <= upper:
-                    col1 = colors.mid_color
+                    col2 = colors.mid_color
                 elif minV >= lower and minV <= upper:
-                    col1 = colors.dark_green
+                    col2 = colors.dark_green
                 elif maxV >= lower and maxV <= upper:
-                    col1 = colors.dark_red
+                    col2 = colors.dark_red
 
                 if minV < lower and maxV > upper:
-                    col1 = colors.feature_bg
+                    col2 = colors.feature_bg
+
+                if yH >= y1 and yH <= y2:
+                    drwLineZon(draw_tasks[0][1], 1-yH,x0,1-yH,x3,colors.col_black, strk = 1)
+                if yL >= y1 and yL <= y2:
+                    drwLineZon(draw_tasks[0][1], 1-yL,x0,1-yL,x3,colors.col_black, strk = 1)
+
+                if yE and yE >= y1 and yE <= y2:
+                    drwLineZon(draw_tasks[0][1], 1-yE,x0,1-yE,x3,(150,255,150), strk = 1)
+                if yP and yP >= y1 and yP <= y2:
+                    drwLineZon(draw_tasks[0][1], 1-yP,x0,1-yP,x3,(255,150,255), strk = 1)
 
                 rgb_col = interpolate(col1, col2, abs(line.variation/40))
                 drwLineZon(draw_tasks[0][1], 1-y1,x1,1-y2,x2,rgb_col, strk = 2)
@@ -1086,7 +1163,7 @@ class ChainedProcessor():
     def __init__(self, pygame_instance, display_instance, ui_ref, data_label, data_path, beat_time = 1):
         self.W = W
         self.H = H
-        self.producer = ChainedsProducer(data_label, data_path, meta_path = META_SCRIPT, minor_meta = META_MINOR, ui_ref = ui_ref)
+        self.producer = ChainedsProducer(data_label, data_path, meta_path = META_DIR, minor_meta = META_MINOR_DIR, ui_ref = ui_ref)
         self.drawer = ChainedDrawer(pygame_instance, display_instance, W, H)
         self.control = KeyboardChainModel(pygame_instance)
         self.active_line = None
@@ -1122,6 +1199,8 @@ class ChainedProcessor():
         if self.active_entity.mode == "SHOW":
             self.time_elapsed_cummulative = 0
             self.ui_ref.move_image = True
+            if LAST_META:
+                self.ui_ref.meta_text = LAST_META
 
         if self.active_entity.mode == "DONE":
             self.ui_ref.global_progress = self.producer.chains.get_chains_progression()
@@ -1163,6 +1242,7 @@ class ChainedProcessor():
                 return 0
 
             self.last_uid = self.active_entity.uid
+            self.ui_ref.last_positive = True
             return 1
         elif LAST_EVENT == "ERROR" and NEW_EVENT:
             NEW_EVENT = False
@@ -1175,6 +1255,7 @@ class ChainedProcessor():
                 return 0
 
             self.last_uid = self.active_entity.uid
+            self.ui_ref.last_positive = False
             return -1
         else:
             return 0

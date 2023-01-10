@@ -2,19 +2,19 @@ import random
 import json
 import os
 import csv
-from config import PROGRESSION_FILE, IMAGES_MAPPING_FILE, VISUAL_PART, STAKE_PART, HIGHER_TIMEFRAME_SCALE
+from config import PROGRESSION_FILE, IMAGES_MAPPING_FILE, VISUAL_PART, STAKE_PART, HIGHER_TIMEFRAME_SCALE, MID_TIMEFRAME_SCALE, MID_TIMEFRAME_SCALE_2
 
 knwon_prices = {}
 dense_prices = {}
+mid_prices = {}
+# mid_prices_2 = {}
 
 class simpleCandle():
-    def __init__(self, o, c, h, l, v, index = 0):
+    def __init__(self, o, c, h, l, index = 0):
         self.o = o
         self.c = c
         self.h = h
         self.l = l
-        self.v = v
-        self.ha = []
 
         self.vRising = False
         self.index = index
@@ -41,15 +41,25 @@ class simpleCandle():
         self.down_from_within = False     # are candle goes up from within
         self.thick_upper = False          # upper wick taller or lower wick
         self.thick_lower = False          #
+
+        self.upbreak = False
+        self.downbreak = False
+
+        # self.lower_shelf_price = None
+        # self.to_lower_shelf_off = None
+        # self.lower_shelf_done = False
+        # self.higher_shelf_price = None
+        # self.to_higher_shelf_off = None
+        # self.higher_shelf_done = False
+        #
+        # self.is_processed = False
         
     def ochl(self):
         return self.o, self.c, self.h, self.l
 
-    def ochlv(self):
-        return self.o, self.c, self.h, self.l, self.v
-
-def extract_ochlv(filepath):
-    O, C, H, L, V = [], [], [], [], []
+def extract_ochl(filepath):
+    #O, C, H, L, V = [], [], [], [], []
+    O, C, H, L = [], [], [], []
     with open(filepath, "r") as ochlfile:
         reader = csv.reader(ochlfile)
         for line in reader:
@@ -57,15 +67,17 @@ def extract_ochlv(filepath):
             C.append(float(line[1])*100)
             H.append(float(line[2])*100)
             L.append(float(line[3])*100)
-            V.append(float(line[4])*100)
 
-    return O,C,H,L,V
+    return O,C,H,L
 
 def fetch_prices(asset_name):
     global knwon_prices
     global dense_prices
-    O, C, H, L, V = extract_ochlv(asset_name)
-    knwon_prices[asset_name] = [simpleCandle(o,c,h,l,v,i) for i, (o,c,h,l,v) in enumerate(zip(O,C,H,L,V))]
+    global mid_prices
+    # global mid_prices_2
+    #O, C, H, L, V = extract_ochlv(asset_name)
+    O, C, H, L = extract_ochl(asset_name)
+    knwon_prices[asset_name] = [simpleCandle(o,c,h,l,i) for i, (o,c,h,l) in enumerate(zip(O,C,H,L))]
 
     candles = knwon_prices[asset_name]
 
@@ -75,11 +87,37 @@ def fetch_prices(asset_name):
         C = candles[i-1].c
         H = max(candles[i-HIGHER_TIMEFRAME_SCALE:i], key = lambda _ : _.h).h
         L = min(candles[i-HIGHER_TIMEFRAME_SCALE:i], key = lambda _ : _.l).l
-        V = sum(_.v for _ in candles[i-HIGHER_TIMEFRAME_SCALE:i])
         I = candles[i-1].index
-        condensed.append(simpleCandle(O,C,H,L,V,I))
+        condensed.append(simpleCandle(O,C,H,L,I))
 
     dense_prices[asset_name] = condensed
+
+    candles = knwon_prices[asset_name]
+
+    condensed = []
+    for i in range(MID_TIMEFRAME_SCALE,len(candles),MID_TIMEFRAME_SCALE):
+        O = candles[i-MID_TIMEFRAME_SCALE].o
+        C = candles[i-1].c
+        H = max(candles[i-MID_TIMEFRAME_SCALE:i], key = lambda _ : _.h).h
+        L = min(candles[i-MID_TIMEFRAME_SCALE:i], key = lambda _ : _.l).l
+        I = candles[i-1].index
+        condensed.append(simpleCandle(O,C,H,L,I))
+
+    mid_prices[asset_name] = condensed
+
+    candles = knwon_prices[asset_name]
+
+    # condensed = []
+    # for i in range(MID_TIMEFRAME_SCALE_2,len(candles),MID_TIMEFRAME_SCALE_2):
+    #     O = candles[i-MID_TIMEFRAME_SCALE_2].o
+    #     C = candles[i-1].c
+    #     H = max(candles[i-MID_TIMEFRAME_SCALE_2:i], key = lambda _ : _.h).h
+    #     L = min(candles[i-MID_TIMEFRAME_SCALE_2:i], key = lambda _ : _.l).l
+    #     V = sum(_.v for _ in candles[i-MID_TIMEFRAME_SCALE_2:i])
+    #     I = candles[i-1].index
+    #     condensed.append(simpleCandle(O,C,H,L,V,I))
+    #
+    # mid_prices_2[asset_name] = condensed
            
 
 def get_candles(asset_name, index):
@@ -100,6 +138,28 @@ def get_dense(asset_name, index):
 
     for candle in range_selector:
         yield candle
+
+def get_mid(asset_name, index):
+
+    if asset_name not in mid_prices:
+        fetch_prices(asset_name)
+
+    initial_ind = max(0, (int(index)-60+VISUAL_PART) - VISUAL_PART*MID_TIMEFRAME_SCALE)
+    range_selector = filter(lambda _ : _.index >= initial_ind, mid_prices[asset_name])
+
+    for candle in range_selector:
+        yield candle
+
+# def get_mid_2(asset_name, index):
+#
+#     if asset_name not in mid_prices_2:
+#         fetch_prices(asset_name)
+#
+#     initial_ind = max(0, (int(index)-60+VISUAL_PART) - VISUAL_PART*MID_TIMEFRAME_SCALE_2)
+#     range_selector = filter(lambda _ : _.index >= initial_ind, mid_prices_2[asset_name])
+#
+#     for candle in range_selector:
+#         yield candle
 
 class ChainUnitType():
     type_key = "type_key"
@@ -149,7 +209,11 @@ class ChainedFeature():
         self.source = source
         self.start_point = start_point
         self.candles = self.pre_process_candles()
-        self.dence_candles = self.pre_process_candles(get_dense(source, start_point), only_visual = True)
+        self.dense_candles = self.pre_process_candles(get_dense(source, start_point), only_visual = True)
+        self.mid_candles = self.pre_process_candles(get_mid(source, start_point), only_visual = True)
+        for i in range(len(self.mid_candles)):
+            self.mid_candles[i].index = i
+
 
         self.feature_level = 0
 
@@ -179,11 +243,14 @@ class ChainedFeature():
         index_shift = 0
         limit = VISUAL_PART + STAKE_PART if not only_visual else VISUAL_PART
 
+        in_out_queue = []
+
         for candle in candles_generator:
             candle.index -= index_shift
 
             if len(candles) >= limit:
                 break
+
 
             if candles and len(candles) < VISUAL_PART:
 
@@ -238,8 +305,52 @@ class ChainedFeature():
                     candle.down_within_p1 = lower_prev
                     candle.down_within_p2 = lower_next
 
-                    
+
+                for to_check in in_out_queue[::-1]:
+                    if upper_next > to_check.h:
+                        to_check.upbreak = True
+                    if lower_next < to_check.l:
+                        to_check.downbreak = True
+
+                # for to_check in shelfs_queue[::-1]:
+                #     if candle.h >= to_check.h:
+                #
+                #         if not to_check.higher_shelf_price:
+                #             to_check.higher_shelf_price = candle.l
+                #             to_check.to_higher_shelf_off = candle.index - to_check.index
+                #
+                #         if upper_next > to_check.higher_shelf_price:
+                #             to_check.higher_shelf_done = True
+                #
+                #         if candle.h >= to_check.higher_shelf_price:
+                #
+                #             to_check.higher_shelf_price = candle.h
+                #             to_check.to_higher_shelf_off = candle.index - to_check.index
+                #
+                #             if candle.index - to_check.index >= 20:
+                #                 to_check.higher_shelf_done = True
+                #
+                #     if candle.l <= to_check.l:
+                #         if not to_check.lower_shelf_price:
+                #             to_check.lower_shelf_price = candle.l
+                #             to_check.to_lower_shelf_off = candle.index - to_check.index
+                #
+                #         if lower_next < to_check.lower_shelf_price:
+                #             to_check.lower_shelf_done = True
+                #
+                #         if candle.l <= to_check.lower_shelf_done:
+                #             to_check.lower_shelf_price = cadle.l
+                #             to_check.to_lower_shelf_off = candle.index - to_check.index
+                #
+                #             if candle.index - to_check.index >= 20:
+                #                 to_check.lower_shelf_done = True
+
+
+
+            in_out_queue = list(filter(lambda _ : not _.upbreak and not _.downbreak, in_out_queue))
+
             candles.append(candle)
+            in_out_queue.append(candle)
 
         return candles
 
@@ -280,7 +391,7 @@ class ChainedFeature():
             self.candles[VISUAL_PART-1].to_price = min_low
             self.burn_ind == VISUAL_PART-1
 
-        elif high_range > low_range and low_first:
+        elif low_first:
             self.burn_key = burn_keys["LONG P"] 
             self.candles[min_low_i].to_offset = (max_high_i - min_low_i)
             self.candles[min_low_i].from_price = self.candles[min_low_i].l
@@ -297,6 +408,12 @@ class ChainedFeature():
 
     def get_question_candles(self):
         return self.candles[:VISUAL_PART]
+
+    def get_mid_candles(self):
+        return self.mid_candles[:]
+
+    # def get_mid_candles_2(self):
+    #     return self.mid_candles_2[:]
 
     def set_burn_mode(self):
         self.is_burning = True
@@ -354,7 +471,7 @@ class ChainedFeature():
         return special_lines
 
     def get_high_tf_context(self):
-        selected_candles = self.dence_candles 
+        selected_candles = self.dense_candles 
         high_low_line = []
         last_high = False
         for i, candle in enumerate(selected_candles):

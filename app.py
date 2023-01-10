@@ -56,7 +56,7 @@ progression = Progression(new_line_counter,
 
 beat_time = new_line_counter.drop_time 
 
-font = pygame.font.Font(CYRILLIC_FONT, 200, bold = True)
+font = pygame.font.Font(CYRILLIC_FONT, 80, bold = True)
 pygame.event.set_allowed([pygame.QUIT, pygame.KEYDOWN, pygame.KEYUP])
 pygame.mouse.set_visible(False)
 fpsClock = pygame.time.Clock()
@@ -68,7 +68,7 @@ meta = ""
 meta_minor = []
 
 base_font = pygame.font.match_font("setofont")
-base_font = pygame.font.Font(base_font, 50)
+base_font = pygame.font.Font(base_font, 35)
 minor_font = pygame.font.match_font("setofont")
 minor_font = pygame.font.Font(minor_font, 30)
 
@@ -112,21 +112,18 @@ for time_delta in delta_timer:
 
         display_surface.blit(trans_surface, (0,0))
 
-
-        text = font.render("*"*(len(pause_progression)) , True, colors.col_bg_darker)
-        textRect = text.get_rect()
-        textRect.center = (W//2, H//2)
-        display_surface.blit(text, textRect)
-
         if pause_progression:
             total = sum(int(_[:-1]) for _ in pause_progression) - 100*len(pause_progression)
-            current_progress = pause_progression + ["#" for _ in range(5-len(pause_progression))]
-            place_text(" ".join(current_progress) + "||" + f" {total}$" + f" \\{max_fallback}/{max_streak}",
+            num_errors = sum([1 for _ in pause_progression if int(_[:-1]) <= 100])
+            mark = "S" if num_errors == 0 else "A" if num_errors == 1 else "B" if num_errors == 2 else "C" if num_errors == 3 else "D" if num_errors == 4 else "E"
+            color = colors.dark_green if total >= 0 else colors.col_error
+            current_progress = pause_progression + ["_" for _ in range(5-len(pause_progression))]
+            place_text(" ".join(current_progress) + "|" + f" {total}$" + f" \\ {max_fallback} / {max_streak} | {mark}",
                         W//2,
-                        H//2-70 - 40,
-                        transparent = False,
-                        renderer = None,
-                        base_col = (colors.dark_green if active_balance > 100 else colors.col_error))
+                        H//2,
+                        transparent = True,
+                        renderer = font,
+                        base_col = color)
             
 
         if meta:
@@ -134,7 +131,7 @@ for time_delta in delta_timer:
             for i, chunk in enumerate(chunks):
                 place_text(chunk,
                             W//2,
-                            H//2+70 + 40*(i+1),
+                            H//2+70 + 30*(i+1),
                             transparent = True,
                             renderer = None,
                             base_col = (colors.col_bt_pressed))

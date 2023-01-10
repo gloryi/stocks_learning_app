@@ -16,8 +16,11 @@ class UpperLayout():
         self.display_instance = display_instance
         self.backgroudn_color = (60, 60, 60)
         font_file = pygame_instance.font.match_font("setofont")
+        self.smallest_font2 = pygame_instance.font.Font(font_file, 15)
+        self.smallest_font = pygame_instance.font.Font(font_file, 20)
+        self.small_font = pygame_instance.font.Font(font_file, 30)
         self.font = pygame_instance.font.Font(font_file, 50)
-        self.large_font = pygame_instance.font.Font(font_file, 80)
+        self.large_font = pygame_instance.font.Font(font_file, 60)
         self.utf_font = self.pygame_instance.font.Font(CHINESE_FONT, 150, bold = True)
         self.combo = 1
         self.tiling = ""
@@ -39,6 +42,7 @@ class UpperLayout():
         self.images_cached = {} 
         self.image = None
         self.meta_text = ""
+        self.last_positive = False
         self.trans_surface = self.pygame_instance.Surface((W,H)) 
         self.trans_surface.set_alpha(160)                # alpha level
         self.trans_surface.fill((30,0,30))           # this fills the entire surface
@@ -61,7 +65,7 @@ class UpperLayout():
 
         elif not path_to_image in self.images_cached and os.path.exists(path_to_image):
             if len(self.images_cached) > 100:
-                self.images_cached = dict(itertools.islice(self.images_cached.items(), 50))
+                self.images_cached = dict(islice(self.images_cached.items(), 50))
 
             image_converted = self.pygame_instance.image.load(path_to_image).convert()
             image_scaled = self.pygame_instance.transform.scale(image_converted, (W, H))
@@ -94,69 +98,104 @@ class UpperLayout():
 
         line_color = (int(255*(1-self.percent)),int(255*(self.percent)),0)
 
-        self.place_text(str(self.combo)+"x", 420 - 100+ 150,
-                        60,
+        self.place_text(str(self.combo)+"x",  W//2,
+                        20,
                         transparent = True,
                         renderer = self.large_font,
                         base_col = (50,50,50))
 
-        self.place_text(str(self.global_progress), 420 - 300+ 150,
-                        40,
+        self.place_text(str(self.global_progress), W//2 + W//8,
+                        20,
                         transparent = True,
-                        renderer = self.font,
+                        renderer = self.small_font,
                         base_col = (50,50,50))
 
-        self.place_text(str(self.combo)+"x", 920 + 100+ 150,
-                        60,
+        self.place_text(str(self.global_progress), W//2 - W//8,
+                        20,
                         transparent = True,
-                        renderer = self.large_font,
+                        renderer = self.small_font,
                         base_col = (50,50,50))
 
-        self.place_text(str(self.global_progress), 920 + 300+ 150,
-                        40,
-                        transparent = True,
-                        renderer = self.font,
-                        base_col = (50,50,50))
 
-        if self.meta_text:
-            chunks = [self.meta_text[i:i+40] for i in range(0, len(self.meta_text), 40)]
-            for i, chunk in enumerate(chunks):
-                self.place_text(chunk,
-                                W//2,
-                                40*(i+1),
-                                transparent = False,
-                                renderer = self.font,
-                                base_col = (clip_color(self.bg_color[0]+self.variation*3),
-                                            clip_color(self.bg_color[1]+self.variation*3),
-                                            clip_color(self.bg_color[2]+self.variation*3)))
-
-        base_line_color = colors.col_wicked_darker 
         inter_color = lambda v1, v2, p: clip_color(v1 + (v2-v1)*p)
         interpolate = lambda col1, col2, percent: (inter_color(col1[0], col2[0], self.timing_ratio),
                                                    inter_color(col1[1], col2[1], self.timing_ratio),
                                                    inter_color(col1[2], col2[2], self.timing_ratio))
-        line_color = interpolate(colors.col_active_lighter, colors.col_wicked_darker, 1.0-self.timing_ratio)
+
+        col2 = interpolate(colors.col_wicked_darker, colors.col_correct, self.combo/10)
+        line_color = interpolate(colors.col_active_lighter, col2, 1.0-self.timing_ratio)
 
         self.pygame_instance.draw.circle(self.display_instance,
                                   line_color,
-                                  (0, H),
+                                  (W//2, H),
                                    (H)*self.timing_ratio, width=10)
+
+        if self.meta_text:
+            self.place_text(f"{self.meta_text}", W//2,
+                        H-H//4,
+                        transparent = True,
+                        renderer = self.font,
+                        base_col = (90,150,90) if self.last_positive else (150, 90, 90))
 
 
         line_color = (int((235)*(1-self.percent)),int((235)*(self.percent)),0)
 
 
-
-
+        #Balance and metrics
         self.pygame_instance.draw.rect(self.display_instance,
                                   line_color,
                                   ((320 + (250*3*(1-self.percent))/2)+150,
-                                   0,
+                                   45,
                                    250*3*self.percent,
-                                   25))
+                                   20))
 
+        lower_p = lambda _ :  int(int(_) - int(_)*0.25)
+        greater_p = lambda _ :  int(int(_) + int(_)*0.25*3)
+
+        pm1 = lower_p(self.active_balance)
+        pm2 = lower_p(pm1)
+        pm3 = lower_p(pm2)
+        pg1 = greater_p(self.active_balance)
+        pg2 = greater_p(pg1)
+        pg3 = greater_p(pg2)
+
+        self.place_text(f"{pm3}$", W//2-W//8,
+                        55,
+                        transparent = True,
+                        renderer = self.smallest_font2,
+                        base_col = (90,50,10))
+
+        self.place_text(f"{pm2}$", W//2-W//10,
+                        55,
+                        transparent = True,
+                        renderer = self.smallest_font,
+                        base_col = (90,50,10))
+        self.place_text(f"{pm1}$", W//2-W//16,
+                        55,
+                        transparent = True,
+                        renderer = self.small_font,
+                        base_col = (90,50,10))
+        
         self.place_text(f"{self.active_balance}$", W//2,
-                        12,
+                        55,
                         transparent = True,
                         renderer = self.font,
                         base_col = (50,50,50))
+
+        self.place_text(f"{pg1}$", W//2+W//16,
+                        55,
+                        transparent = True,
+                        renderer = self.small_font,
+                        base_col = (50,10,90))
+        self.place_text(f"{pg2}$", W//2+W//10,
+                        55,
+                        transparent = True,
+                        renderer = self.smallest_font,
+                        base_col = (50,10,90))
+        self.place_text(f"{pg3}$", W//2+W//8,
+                        55,
+                        transparent = True,
+                        renderer = self.smallest_font2,
+                        base_col = (50,10,90))
+
+
