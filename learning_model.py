@@ -2,12 +2,11 @@ import random
 import json
 import os
 import csv
-from config import PROGRESSION_FILE, IMAGES_MAPPING_FILE, VISUAL_PART, STAKE_PART, HIGHER_TIMEFRAME_SCALE, MID_TIMEFRAME_SCALE, MID_TIMEFRAME_SCALE_2
+from config import PROGRESSION_FILE, IMAGES_MAPPING_FILE, VISUAL_PART, STAKE_PART, HIGHER_TIMEFRAME_SCALE, MID_TIMEFRAME_SCALE 
 
 knwon_prices = {}
 dense_prices = {}
 mid_prices = {}
-# mid_prices_2 = {}
 
 class simpleCandle():
     def __init__(self, o, c, h, l, index = 0):
@@ -24,6 +23,7 @@ class simpleCandle():
         self.up_within_p2 = None
         self.down_within_p1 = None
         self.down_within_p2 = None
+        self.burn_ind = None
         self.to_offset = None
         self.to_price = None
         self.from_price = None
@@ -44,15 +44,7 @@ class simpleCandle():
 
         self.upbreak = False
         self.downbreak = False
-
-        # self.lower_shelf_price = None
-        # self.to_lower_shelf_off = None
-        # self.lower_shelf_done = False
-        # self.higher_shelf_price = None
-        # self.to_higher_shelf_off = None
-        # self.higher_shelf_done = False
-        #
-        # self.is_processed = False
+        self.no_sooner = index
         
     def ochl(self):
         return self.o, self.c, self.h, self.l
@@ -251,7 +243,6 @@ class ChainedFeature():
             if len(candles) >= limit:
                 break
 
-
             if candles and len(candles) < VISUAL_PART:
 
                 upper_next, lower_next = max(candle.o, candle.c), min(candle.o, candle.c)
@@ -309,48 +300,16 @@ class ChainedFeature():
                 for to_check in in_out_queue[::-1]:
                     if upper_next > to_check.h:
                         to_check.upbreak = True
+                        to_check.no_sooner = candle.index
                     if lower_next < to_check.l:
                         to_check.downbreak = True
-
-                # for to_check in shelfs_queue[::-1]:
-                #     if candle.h >= to_check.h:
-                #
-                #         if not to_check.higher_shelf_price:
-                #             to_check.higher_shelf_price = candle.l
-                #             to_check.to_higher_shelf_off = candle.index - to_check.index
-                #
-                #         if upper_next > to_check.higher_shelf_price:
-                #             to_check.higher_shelf_done = True
-                #
-                #         if candle.h >= to_check.higher_shelf_price:
-                #
-                #             to_check.higher_shelf_price = candle.h
-                #             to_check.to_higher_shelf_off = candle.index - to_check.index
-                #
-                #             if candle.index - to_check.index >= 20:
-                #                 to_check.higher_shelf_done = True
-                #
-                #     if candle.l <= to_check.l:
-                #         if not to_check.lower_shelf_price:
-                #             to_check.lower_shelf_price = candle.l
-                #             to_check.to_lower_shelf_off = candle.index - to_check.index
-                #
-                #         if lower_next < to_check.lower_shelf_price:
-                #             to_check.lower_shelf_done = True
-                #
-                #         if candle.l <= to_check.lower_shelf_done:
-                #             to_check.lower_shelf_price = cadle.l
-                #             to_check.to_lower_shelf_off = candle.index - to_check.index
-                #
-                #             if candle.index - to_check.index >= 20:
-                #                 to_check.lower_shelf_done = True
-
+                        to_check.no_sooner = candle.index
 
 
             in_out_queue = list(filter(lambda _ : not _.upbreak and not _.downbreak, in_out_queue))
 
             candles.append(candle)
-            in_out_queue.append(candle)
+            #in_out_queue.append(candle)
 
         return candles
 
@@ -382,6 +341,7 @@ class ChainedFeature():
             self.candles[VISUAL_PART-1].to_offset = (max_high_i - anchor_i)
             self.candles[VISUAL_PART-1].to_price = max_high
             self.candles[VISUAL_PART-1].from_price = self.candles[VISUAL_PART-1].l
+            self.candles[VISUAL_PART-1].burn_flag = "LONG"
             self.burn_ind = VISUAL_PART-1
 
         elif low_range > high_range and max_high < decision_candle.h:
@@ -389,6 +349,7 @@ class ChainedFeature():
             self.candles[VISUAL_PART-1].to_offset = (min_low_i - anchor_i)
             self.candles[VISUAL_PART-1].from_price = self.candles[VISUAL_PART-1].h
             self.candles[VISUAL_PART-1].to_price = min_low
+            self.candles[VISUAL_PART-1].burn_flag = "SHORT"
             self.burn_ind == VISUAL_PART-1
 
         elif low_first:
@@ -396,6 +357,7 @@ class ChainedFeature():
             self.candles[min_low_i].to_offset = (max_high_i - min_low_i)
             self.candles[min_low_i].from_price = self.candles[min_low_i].l
             self.candles[min_low_i].to_price = max_high
+            self.candles[min_low_i].burn_flag = "LONG P"
             self.burn_ind = min_low_i
 
         else:
@@ -403,6 +365,7 @@ class ChainedFeature():
             self.candles[max_high_i].to_offset = (min_low_i - max_high_i)
             self.candles[max_high_i].from_price = self.candles[max_high_i].h
             self.candles[max_high_i].to_price = min_low
+            self.candles[max_high_i].burn_flag = "SHORT P"
             self.burn_ind = max_high_i
 
 

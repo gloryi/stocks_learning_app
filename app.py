@@ -58,7 +58,7 @@ upper_stats = UpperLayout(pygame, display_surface)
 new_line_counter = Counter(upper_stats)
 pause_counter = Counter(bpm = 1/3)
 screenshot_timer = Counter(bpm = 1)
-quadra_timer = Counter(bpm = 20)
+quadra_timer = Counter(bpm = 12)
 
 game = ChainedProcessor(pygame, display_surface, upper_stats, "hanzi chineese", STOCKS_DATA,
                         (60*1000)/BPM)
@@ -180,6 +180,10 @@ for time_delta in delta_timer:
             total = sum(int(_[:-1]) for _ in pause_progression) - 100*len(pause_progression)
             num_errors = sum([1 for _ in pause_progression if int(_[:-1]) <= 100])
             mark = "S" if num_errors == 0 else "A" if num_errors == 1 else "B" if num_errors == 2 else "C" if num_errors == 3 else "D" if num_errors == 4 else "E"
+            if total >= 0:
+                color = interpolate(colors.dark_green, colors.feature_bg, quadra_w_perce2)
+            else:
+                color = interpolate(colors.dark_red, colors.red1, quadra_w_perce2)
             color = colors.dark_green if total >= 0 else colors.col_error
             current_progress = pause_progression + ["_" for _ in range(5-len(pause_progression))]
             place_text(" ".join(current_progress) + "|" + f" {total}$" + f" \\ {max_fallback} / {max_streak} | {mark}",
@@ -198,7 +202,9 @@ for time_delta in delta_timer:
                             H//2+70 + 30*(i+1),
                             transparent = True,
                             renderer = None,
-                            base_col = (colors.col_bt_pressed))
+                            base_col = interpolate(colors.col_bt_pressed,
+                                                   colors.feature_text_col,
+                                                   quadra_w_perce1))
         if meta_minor:
             for i, line in enumerate(meta_minor):
                 place_text(line,
@@ -206,7 +212,9 @@ for time_delta in delta_timer:
                             H//2-500 + 30*(i+1),
                             transparent = True,
                             renderer = minor_font,
-                            base_col = (colors.col_bt_pressed))
+                            base_col = interpolate(colors.col_bt_pressed,
+                                                   colors.feature_text_col,
+                                                   quadra_w_perce1))
 
     if paused:
         pygame.display.update()

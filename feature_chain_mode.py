@@ -136,7 +136,12 @@ class ChainedEntity():
 
         self.variation = 0
         self.variation_on_rise = True
-        self.constant_variations = random.sample([_ for _ in range(11)], 4)
+        self.constant_variations = random.sample([_ for _ in range(10)], 4)
+        #self.initial_action_done = random.choice([True, False])
+        self.initial_action_done = False 
+        #if not self.initial_action_done:
+        self.initial_action = random.choice(["ENTRY", "SL"])
+
         self.palette = random.choice(colors.palettes) 
 
         self.question_index = VISUAL_PART
@@ -181,7 +186,7 @@ class ChainedEntity():
                 self.entry_activated = True
                 triggered = True
 
-            if not triggered and within(self.sl, c):
+            if within(self.sl, c):
                 stop_counted_ex = True
 
             if triggered and not profit_first and within(self.sl, c):
@@ -195,7 +200,7 @@ class ChainedEntity():
                     self.chained_feature.register_error()
                     self.features_chain.update_errors(register_new=True)
             
-            if not triggered and within(self.tp, c):
+            if within(self.tp, c):
                 profit_counted_ex = True
 
             if triggered and not stop_first and within(self.tp, c):
@@ -205,8 +210,28 @@ class ChainedEntity():
 
                 LAST_EVENT = "POSITIVE"
 
-                
-        stp, entr, prof = stop_counted or stop_counted_ex, self.entry_activated, profit_counted or profit_counted_ex
+
+        opposite = False
+        stp, entr, prof = False, False, False
+        if not self.entry_activated:
+            if stop_counted_ex and not profit_counted_ex:
+                stp, entr, prof = True , False, False
+            elif profit_counted_ex and not stop_counted_ex:
+                stp, entr, prof = False, False, True
+
+        elif self.entry_activated:
+            if not profit_counted_ex and not stop_counted_ex:
+                stp, entr, prof = False, True , False
+            elif profit_first:
+                stp, entr, prof = False, True , True
+                if stop_counted_ex:
+                    opposite = True
+            elif stop_first:
+                stp, entr, prof = True , True , False
+                if profit_counted_ex:
+                    opposite = True
+            else:
+                stp, entr, prof = True , True , True
 
         direction = "LONG"
         if self.sl > self.entry:
@@ -217,16 +242,30 @@ class ChainedEntity():
         elif stp and not entr and not prof:
                 LAST_META = "PAPERCUT" if direction == "SHORT" else  "EXECUTION"
         elif stp and entr and not prof:
-                LAST_META = "WOUNDED" if direction == "SHORT" else "GUNSHOT"
+                LAST_META = "WOUNDED" if direction == "SHORT" else "INJURED"
+                if opposite:
+                    LAST_META = "SLIGHTLY " + LAST_META
+                else:
+                    LAST_META = "HARSHLY " + LAST_META
+
         elif stp and entr and prof:
                 LAST_META = "MASACRE" if direction == "SHORT" else "BLAST"
+                if profit_first and stop_counted_ex:
+                    LAST_META = "SMALL " + LAST_META
+                if stop_first and profit_counted_ex:
+                    LAST_META = "TERRIBLE " + LAST_META
+
         elif not stp and entr and not prof:
                 LAST_META = "CLATCH" if direction == "SHORT" else "FLEED"
         elif not stp and entr and prof:
             LAST_META = "STUBBED" if direction == "SHORT" else "NAILED"
+            if not opposite:
+                LAST_META = "PERFECTLY " + LAST_META
+            if opposite:
+                LAST_META = "DIRTLY " + LAST_META
         elif not stp and not entr and prof:
             LAST_META = "DROP" if direction == "SHORT" else "MISFIRE"
-                
+
 
         if profit_first:
             return True
@@ -333,7 +372,20 @@ class ChainedEntity():
             return
         if self.mode == "QUESTION":
             mouse_position = self.pygame_instance.mouse.get_pos()
+
             LMB, RMB = 0, 2
+
+            if not self.initial_action_done:
+                if self.initial_action == "ENTRY" and not mouse_poses[LMB]:
+                    return
+                else:
+                    self.initial_action_done = True
+
+                if self.initial_action == "SL" and not mouse_poses[RMB]:
+                    return
+                else:
+                    self.initial_action_done = True
+
             if mouse_poses[LMB]:
                 self.entry = self.question_pxls_to_price(mouse_position[1])
         
@@ -368,13 +420,13 @@ class ChainedEntity():
         set_size = lambda _ : 30
 
 
-        options_x_corners = [W//2 - W//4, W//2 - W//8, W//2 + W//8, W//2 + W//4]
+        options_x_corners = [W//2 - W//5, W//2 - W//10, W//2 + W//10, W//2 + W//5]
         options_y_corners = [H-50,      H-50,    H-50,  H-50]
         options_w = 150
         options_h = 50
 
         options = ["/ LONG /", "\\ DUST /", "/ RAIN \\", "\\ SHORT \\"]
-        opt_colors = [colors.option_fg, colors.option_bg, colors.red2, colors.red1]
+        opt_colors = [colors.option_fg, colors.dark_green, colors.red2, colors.red1]
         for i, (x1, y1) in enumerate(zip(options_x_corners, options_y_corners)):
             ctx = options[i]
             ctx_x = x1
@@ -419,7 +471,7 @@ class ChainedEntity():
 
         if self.variation == 0:
             if self.mode == "QUESTION":
-                avaliable_numbers = [_ for _ in range(11) if _ not in self.constant_variations]
+                avaliable_numbers = [_ for _ in range(10) if _ not in self.constant_variations]
                 if len(self.constant_variations)%2:
                     self.constant_variations.append(random.choice(avaliable_numbers))
                 else:
@@ -527,7 +579,7 @@ class ChainedDrawer():
         if not line.burn_mode:
             return
 
-        options_x_corners = [W//2 - W//4, W//2 - W//8, W//2 + W//8, W//2 + W//4]
+        options_x_corners = [W//2 - W//5, W//2 - W//10, W//2 + W//10, W//2 + W//5]
         options_y_corners = [H-50,      H-50,    H-50,  H-50]
         options_w = 150
         options_h = 50
@@ -538,7 +590,7 @@ class ChainedDrawer():
 
             color = (255,255,255)
             if key_state == "up":
-                color = colors.col_bt_down if LAST_EVENT == "POSITIVE" else colors.col_error 
+                color = colors.col_bt_down if LAST_EVENT == "POSITIVE" else colors.col_error_2
             elif key_state == "down":
                 color = colors.col_bt_pressed if LAST_EVENT == "POSITIVE" else colors.col_active_lighter
             else:
@@ -751,16 +803,18 @@ class ChainedDrawer():
                 mid_ind = (c0 + i_connected)/2
 
                 burn_col = line.palette[4]
-                if candle.from_price < candle.to_price:
-                    burn_col = colors.dark_green 
-                else:
-                    burn_col = colors.dark_red
 
+                if candle.burn_flag == "LONG":
+                    burn_col = colors.option_fg
+                elif candle.burn_flag == "LONG P":
+                    burn_col = colors.dark_green
+                elif candle.burn_flag == "SHORT P":
+                    burn_col = colors.red2
+                elif candle.burn_flag == "SHORT":
+                    burn_col = colors.red1
 
                 drwLineZon(zone, 1-p_initial,(c0)/dpth,1-mid_price,(c0)/dpth,burn_col,strk=10)
                 drwLineZon(zone, 1-mid_price,(c0)/dpth,1-p_connected,(i_connected+w0)/dpth,burn_col,strk=10)
-
-
 
             if last:
                 upper, lower = max(oline, cline), min(oline, cline)
@@ -920,15 +974,17 @@ class ChainedDrawer():
                     drwLineZon(zone, 1-lwick+0.5/dpth,(c0-0.15)/dpth,1-lwick+1.5/dpth,c0/dpth,col,strk=3)
                     drwLineZon(zone, 1-lwick+0.5/dpth,(c0+0.15)/dpth,1-lwick+1.5/dpth,c0/dpth,col,strk=3)
 
-                if candle.upbreak and 10 in line.constant_variations:
-                    upper_b = max(oline, cline)
-                    mid_wick = (upper_b+hwick)/2
-                    drwLineZon(zone, 1-mid_wick,(c0-0.2)/dpth,1-mid_wick,(c0+0.45)/dpth,col,strk=2)
+                #if candle.upbreak and candle.no_sooner < p2:
+                # if candle.upbreak and not candle.downbreak and 10 in line.constant_variations and candle.no_sooner < p2:
+                #     upper_b = max(oline, cline)
+                #     mid_wick = (upper_b+hwick)/2
+                #     drwLineZon(zone, 1-mid_wick,(c0-0.2)/dpth,1-mid_wick,(c0+3.45)/dpth,col,strk=2)
 
-                if candle.upbreak and 10 in line.constant_variations:
-                    lower_b = min(oline, cline)
-                    mid_wick = (lwick+lower_b)/2
-                    drwLineZon(zone, 1-mid_wick,(c0-0.2)/dpth,1-mid_wick,(c0+0.45)/dpth,col,strk=3)
+                #if candle.downbreak and candle.no_sooner < p2:
+                # if candle.downbreak and not candle.upbreak and 10 in line.constant_variations and candle.no_sooner < p2:
+                #     lower_b = min(oline, cline)
+                #     mid_wick = (lwick+lower_b)/2
+                #     drwLineZon(zone, 1-mid_wick,(c0-0.2)/dpth,1-mid_wick,(c0+3.45)/dpth,col,strk=3)
 
                 # if candle.higher_shelf_done:
                 #     p_connected = fitTozone(candle.higher_shelf_price, minP, maxP) 
@@ -1021,8 +1077,21 @@ class ChainedDrawer():
         dpth = len(candles)
 
         if line.mode == "QUESTION" and not line.burn_mode and line.idle_x:
-            drwLineZon(draw_tasks[0][1], 1,line.idle_x,0,line.idle_x,colors.col_bt_down, strk = 2)
-            drwLineZon(draw_tasks[0][1], 1-idle_l,line.idle_x-(2)/dpth,1-idle_l,line.idle_x+(2/dpth),colors.col_bt_down, strk = 2)
+            line_color = colors.col_bt_down
+            strk = 2
+            cross = 2/dpth
+            if not line.initial_action_done:
+                if line.initial_action == "ENTRY":
+                    line_color = (150,255,150)
+                    strk = 4
+                    cross += 3/dpth
+                if line.initial_action == "SL":
+                    strk = 4
+                    cross += 3/dpth
+                    line_color = (255,150,150)
+
+            drwLineZon(draw_tasks[0][1], 1,line.idle_x,0,line.idle_x,line_color, strk = strk)
+            drwLineZon(draw_tasks[0][1], 1-idle_l,line.idle_x-cross,1-idle_l,line.idle_x+cross,line_color, strk = strk)
 
         o1 = candles[0].index
         o2 = candles[-1].index
