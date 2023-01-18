@@ -12,7 +12,7 @@ import random
 import pyautogui
 
 from ui_elements import UpperLayout
- 
+
 pygame.init()
 display_surface = pygame.display.set_mode((W, H))
 pygame.display.set_caption('STOCKS_TRAINER_067')
@@ -25,7 +25,7 @@ trans_surface2.fill((40,0,40))
 
 time_to_cross_screen = 16000
 time_to_appear = 4000
-beat_time = 0 
+beat_time = 0
 
 pause_progression = []
 pause_screenshots = []
@@ -47,7 +47,7 @@ interpolate = lambda col1, col2, percent: (inter_color(col1[0], col2[0], percent
                                            inter_color(col1[1], col2[1], percent),
                                            inter_color(col1[2], col2[2], percent))
 quadra_col_1 = colors.feature_bg
-quadra_col_2 = colors.col_bt_pressed 
+quadra_col_2 = colors.col_bt_pressed
 
 skip_next = False
 
@@ -67,9 +67,9 @@ game = ChainedProcessor(pygame, display_surface, upper_stats, "hanzi chineese", 
 progression = Progression(new_line_counter,
                           upper_stats)
 
-beat_time = new_line_counter.drop_time 
+beat_time = new_line_counter.drop_time
 
-font = pygame.font.Font(CYRILLIC_FONT, 80, bold = True)
+font = pygame.font.Font(CYRILLIC_FONT, 60, bold = True)
 pygame.event.set_allowed([pygame.QUIT, pygame.KEYDOWN, pygame.KEYUP])
 pygame.mouse.set_visible(False)
 fpsClock = pygame.time.Clock()
@@ -86,10 +86,10 @@ minor_font = pygame.font.match_font("setofont")
 minor_font = pygame.font.Font(minor_font, 30)
 
 upper_stats.active_balance = 100
-    
+
 def place_text(text, x, y, transparent = False, renderer = None, base_col = (80,80,80)):
     if renderer is None:
-        renderer = base_font 
+        renderer = base_font
     if not transparent:
         text = renderer.render(text, True, base_col, (150,150,151))
     else:
@@ -104,10 +104,10 @@ def screenshot_to_image(pil_image):
     data = pil_image.tobytes()
     py_image =  pygame.image.fromstring(data, size, mode)
     py_image =  py_image.convert()
-    image_scaled = pygame.transform.scale(py_image, (W//2, H//2)) 
+    image_scaled = pygame.transform.scale(py_image, (W//2, H//2))
     return image_scaled
 
- 
+
 for time_delta in delta_timer:
 
     if skip_next:
@@ -149,7 +149,7 @@ for time_delta in delta_timer:
 
         if quadra_phase == "INHALE":
             quadra_w_perce1 = quadra_timer.get_percent()
-            quadra_w_perce2 = 1.0 
+            quadra_w_perce2 = 1.0
         elif quadra_phase == "HOLD_IN":
             quadra_w_perce1 = 1.0
             quadra_w_perce2 = 1 - quadra_timer.get_percent()
@@ -170,7 +170,7 @@ for time_delta in delta_timer:
                               interpolate(quadra_col_1, quadra_col_2, quadra_timer.get_percent()**2),
                               (W//2, H//2),
                                (H//2-50)*quadra_w_perce2+50, width = 3)
-            
+
 
 
         display_surface.blit(trans_surface, (0,0))
@@ -183,16 +183,16 @@ for time_delta in delta_timer:
             if total >= 0:
                 color = interpolate(colors.dark_green, colors.feature_bg, quadra_w_perce2)
             else:
-                color = interpolate(colors.dark_red, colors.red1, quadra_w_perce2)
+                color = interpolate(colors.dark_red, colors.red2, quadra_w_perce2)
             color = colors.dark_green if total >= 0 else colors.col_error
             current_progress = pause_progression + ["_" for _ in range(5-len(pause_progression))]
-            place_text(" ".join(current_progress) + "|" + f" {total}$" + f" \\ {max_fallback} / {max_streak} | {mark}",
+            place_text(" ".join(current_progress) + "|" + f" {total}$" + f" | {max_streak-max_fallback} | {mark}",
                         W//2,
                         H//2,
                         transparent = True,
                         renderer = font,
                         base_col = color)
-            
+
 
         if meta:
             chunks = [meta[i:i+70] for i in range(0, len(meta), 70)]
@@ -202,7 +202,7 @@ for time_delta in delta_timer:
                             H//2+70 + 30*(i+1),
                             transparent = True,
                             renderer = None,
-                            base_col = interpolate(colors.col_bt_pressed,
+                            base_col = interpolate(colors.col_active_lighter,
                                                    colors.feature_text_col,
                                                    quadra_w_perce1))
         if meta_minor:
@@ -212,7 +212,7 @@ for time_delta in delta_timer:
                             H//2-500 + 30*(i+1),
                             transparent = True,
                             renderer = minor_font,
-                            base_col = interpolate(colors.col_bt_pressed,
+                            base_col = interpolate(colors.col_active_lighter,
                                                    colors.feature_text_col,
                                                    quadra_w_perce1))
 
@@ -236,7 +236,7 @@ for time_delta in delta_timer:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
- 
+
                 quit()
         continue
 
@@ -307,11 +307,11 @@ for time_delta in delta_timer:
     keys = pygame.key.get_pressed()
     if keys[pygame.K_v]:
         paused = True
- 
+
     for event in pygame.event.get():
- 
+
         if event.type == pygame.QUIT:
             pygame.quit()
- 
+
             quit()
-pygame.quit() 
+pygame.quit()

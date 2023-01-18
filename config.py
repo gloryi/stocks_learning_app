@@ -8,6 +8,7 @@ META_SCRIPT = os.path.join(os.getcwd(), "trading_affirmations.csv")
 META_DIR = os.path.join(os.getcwd(), "Knowledge")
 META_MINOR = os.path.join(os.getcwd(), "semantical_affirmations.csv")
 META_MINOR_DIR = os.path.join(os.getcwd(), "Affirm")
+IMAGES_MINOR_DIR = os.path.join("/home/gloryi/Pictures/Lightning")
 BPM = 10
 
 W = int(1400*1.18+20)

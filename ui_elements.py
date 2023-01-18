@@ -41,11 +41,16 @@ class UpperLayout():
         self.variation_on_rise = True
         self.images_cached = {} 
         self.image = None
+        self.image_minor = None
         self.meta_text = ""
         self.last_positive = False
         self.trans_surface = self.pygame_instance.Surface((W,H)) 
-        self.trans_surface.set_alpha(160)                # alpha level
-        self.trans_surface.fill((30,0,30))           # this fills the entire surface
+        self.trans_surface.set_alpha(160)
+        self.trans_surface.fill((30,0,30))
+
+        self.trans_surface_minor = self.pygame_instance.Surface((W,H)) 
+        self.trans_surface_minor.set_alpha(40)
+        self.trans_surface_minor.fill((30,0,30))
 
     def place_text(self, text, x, y, transparent = False, renderer = None, base_col = (80,80,80)):
         if renderer is None:
@@ -58,10 +63,12 @@ class UpperLayout():
         textRect.center = (x, y)
         self.display_instance.blit(text, textRect)
 
-    def set_image(self, path_to_image):
-
+    def set_image(self, path_to_image, minor=False):
         if not path_to_image:
-            self.image = None
+            if not minor:
+                self.image = None
+            else:
+                self.image_minor = None
 
         elif not path_to_image in self.images_cached and os.path.exists(path_to_image):
             if len(self.images_cached) > 100:
@@ -71,10 +78,17 @@ class UpperLayout():
             image_scaled = self.pygame_instance.transform.scale(image_converted, (W, H))
 
             self.images_cached[path_to_image]  = image_scaled
-            self.image = self.images_cached[path_to_image]
+
+            if not minor:
+                self.image = self.images_cached[path_to_image]
+            else:
+                self.image_minor = self.images_cached[path_to_image]
 
         else:
-            self.image = self.images_cached[path_to_image]
+            if not minor:
+                self.image = self.images_cached[path_to_image]
+            else:
+                self.image_minor = self.images_cached[path_to_image]
 
 
     def redraw(self):
@@ -85,6 +99,10 @@ class UpperLayout():
         if self.image:
             self.display_instance.blit(self.image, (0, 0))
             self.display_instance.blit(self.trans_surface, (0,0))
+
+        if self.image_minor:
+            self.trans_surface_minor.blit(self.image_minor, (0,0))
+            self.display_instance.blit(self.trans_surface_minor, (0,0))
 
         if self.variation_on_rise:
             self.variation += 1
