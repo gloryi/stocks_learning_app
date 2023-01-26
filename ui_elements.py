@@ -152,7 +152,7 @@ class UpperLayout():
             self.place_text(f"{self.meta_text}", W//2,
                         H-H//4,
                         transparent = True,
-                        renderer = self.font,
+                        renderer = self.large_font,
                         base_col = (90,150,90) if self.last_positive else (150, 90, 90))
 
 
@@ -162,9 +162,9 @@ class UpperLayout():
         #Balance and metrics
         self.pygame_instance.draw.rect(self.display_instance,
                                   line_color,
-                                  ((320 + (250*3*(1-self.percent))/2)+150,
+                                  ((W//2 - ((W//4)*(self.percent))/2),
                                    45,
-                                   250*3*self.percent,
+                                   (W//4*self.percent),
                                    20))
 
         lower_p = lambda _ :  int(int(_) - int(_)*0.25)

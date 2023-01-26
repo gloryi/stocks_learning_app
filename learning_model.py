@@ -2,7 +2,10 @@ import random
 import json
 import os
 import csv
-from config import PROGRESSION_FILE, IMAGES_MAPPING_FILE, VISUAL_PART, STAKE_PART, HIGHER_TIMEFRAME_SCALE, MID_TIMEFRAME_SCALE 
+from config import PROGRESSION_FILE, IMAGES_MAPPING_FILE
+from config import VISUAL_PART, STAKE_PART
+from config import HIGHER_TIMEFRAME_SCALE, MID_TIMEFRAME_SCALE
+#from config import TEST
 
 knwon_prices = {}
 dense_prices = {}
@@ -113,7 +116,7 @@ def get_candles(asset_name, index):
     if asset_name not in knwon_prices:
         fetch_prices(asset_name)
 
-    for candle in knwon_prices[asset_name][int(index)-(200-140):]:
+    for candle in knwon_prices[asset_name][int(index)-(350-140):]:
         yield candle
 
 def get_dense(asset_name, index):
@@ -121,22 +124,22 @@ def get_dense(asset_name, index):
     if asset_name not in dense_prices:
         fetch_prices(asset_name)
 
-    initial_ind = max(0, (int(index)-60+VISUAL_PART) - VISUAL_PART*HIGHER_TIMEFRAME_SCALE)
+    initial_ind = max(0, (int(index)-210+VISUAL_PART) - VISUAL_PART*HIGHER_TIMEFRAME_SCALE)
     range_selector = filter(lambda _ : _.index >= initial_ind, dense_prices[asset_name])
 
     for candle in range_selector:
         yield candle
 
-def get_mid(asset_name, index):
-
-    if asset_name not in mid_prices:
-        fetch_prices(asset_name)
-
-    initial_ind = max(0, (int(index)-60+VISUAL_PART) - VISUAL_PART*MID_TIMEFRAME_SCALE)
-    range_selector = filter(lambda _ : _.index >= initial_ind, mid_prices[asset_name])
-
-    for candle in range_selector:
-        yield candle
+# def get_mid(asset_name, index):
+#
+#     if asset_name not in mid_prices:
+#         fetch_prices(asset_name)
+#
+#     initial_ind = max(0, (int(index)-210+VISUAL_PART) - VISUAL_PART*MID_TIMEFRAME_SCALE)
+#     range_selector = filter(lambda _ : _.index >= initial_ind, mid_prices[asset_name])
+#
+#     for candle in range_selector:
+#         yield candle
 
 class ChainUnitType():
     type_key = "type_key"
@@ -187,9 +190,9 @@ class ChainedFeature():
         self.start_point = start_point
         self.candles = self.pre_process_candles()
         self.dense_candles = self.pre_process_candles(get_dense(source, start_point), only_visual = True)
-        self.mid_candles = self.pre_process_candles(get_mid(source, start_point), only_visual = True)
-        for i in range(len(self.mid_candles)):
-            self.mid_candles[i].index = i
+        #self.mid_candles = self.pre_process_candles(get_mid(source, start_point), only_visual = True)
+        #for i in range(len(self.mid_candles)):
+            #self.mid_candles[i].index = i
 
 
         self.feature_level = 0
@@ -250,7 +253,7 @@ class ChainedFeature():
 
                 if candle.v > candles[-1].v:
                     candle.vCount = candles[-1].vCount+1
-                    if candle.vCount >= 3:
+                    if candle.vCount >= 2:
                         candle.vRising = True
                 else:
                     candle.vCount = 0
@@ -363,8 +366,8 @@ class ChainedFeature():
     def get_question_candles(self):
         return self.candles[:VISUAL_PART]
 
-    def get_mid_candles(self):
-        return self.mid_candles[:]
+    #def get_mid_candles(self):
+        #return self.mid_candles[:]
 
     def set_burn_mode(self):
         self.is_burning = True
@@ -398,12 +401,17 @@ class ChainedFeature():
         special_lines = []
         
         high_low_line = []
+        horisontals = []
+
         last_high = False
         for i, candle in enumerate(selected_candles):
             if candle.overhigh:
                 if not last_high or not high_low_line:
                     high_low_line.append([candle.index, candle.h])
                     last_high = True
+                    if len(high_low_line) > 6: 
+                        if high_low_line[-4][1] > high_low_line[-6][1] and high_low_line[-4][1] > high_low_line[-2][1]:
+                            del high_low_line[-4]
                 elif candle.h > high_low_line[-1][1]:
                     high_low_line[-1] = [candle.index, candle.h]
                     last_high = True
@@ -413,10 +421,37 @@ class ChainedFeature():
                     high_low_line.append([candle.index, candle.l])
                     high_low_line[-1] = [candle.index, candle.l]
                     last_high = False
+                    if len(high_low_line) > 6: 
+                        if high_low_line[-4][1] < high_low_line[-6][1] and high_low_line[-4][1] < high_low_line[-1][1]:
+                            del high_low_line[-4]
                 elif candle.l < high_low_line[-1][1]:
                     high_low_line[-1] = [candle.index, candle.l]
                     last_high = False
+
         special_lines.append(high_low_line)
+
+        for i1, p1 in enumerate(high_low_line[::3]):
+            for i2, p2 in enumerate(high_low_line):
+                if p2[0] - p1[0] <= 10 or p2[0] - p1[0] >= 50:
+                    continue
+
+                p3 =  high_low_line[i2-1] 
+                miv = min(p2[1], p3[1])
+                mxv = max(p2[1], p3[1])
+
+                if p1[1] >= miv and p1[1] <= mxv:
+
+                    v_perce = (p1[1]-miv)/(mxv-miv) 
+
+                    if p3[1] < p2[1]:
+                        I2 = p3[0]+(v_perce*(p2[0]-p3[0]))
+                    else:
+                        I2 = p2[0]-(v_perce*(p2[0]-p3[0]))
+
+                    horisontals.append([[p1[0], p1[1]], [I2, p1[1]]])
+                    break
+
+        special_lines += horisontals
 
         return special_lines
 
@@ -429,6 +464,9 @@ class ChainedFeature():
                 if not last_high or not high_low_line:
                     high_low_line.append([len(high_low_line), candle.h])
                     last_high = True
+                    if len(high_low_line) > 6: 
+                        if high_low_line[-4][1] > high_low_line[-6][1] and high_low_line[-4][1] > high_low_line[-2][1]:
+                            del high_low_line[-4]
                 elif candle.h > high_low_line[-1][1]:
                     high_low_line[-1] = [len(high_low_line)-1, candle.h]
                     last_high = True
@@ -437,6 +475,9 @@ class ChainedFeature():
                 if last_high or not high_low_line:
                     high_low_line.append([len(high_low_line), candle.l])
                     last_high = False
+                    if len(high_low_line) > 6: 
+                        if high_low_line[-4][1] < high_low_line[-6][1] and high_low_line[-4][1] < high_low_line[-1][1]:
+                            del high_low_line[-4]
                 elif candle.l < high_low_line[-1][1]:
                     high_low_line[-1] = [len(high_low_line)-1, candle.l]
                     last_high = False
@@ -601,7 +642,7 @@ class ChainedModel():
     def __init__(self, chains):
         self.chains = chains
         self.active_chain = None
-        self.old_limit = 2
+        self.old_limit = 1
         self.new_limit = 2
         self.mistakes_trigger = False
         self.mistakes_chain = []
@@ -634,6 +675,7 @@ class ChainedModel():
         if self.old_limit:
             self.chains.sort(key = lambda _ : _.progression_level + _.last_review_urge * 0.25)
         else:
+            random.shuffle(self.chains)
             self.chains.sort(key = lambda _ : _.progression_level)
             if not self.new_limit:
 
@@ -738,6 +780,9 @@ class ChainedModel():
                 feature.set_burn_mode()
 
     def dump_results(self, progression_file):
+        #if TEST:
+            #return
+
         backup = {}
         for chain in self.chains:
             backup[chain.chain_no] = [chain.progression_level, chain.last_review_urge, chain.errors_mapping]

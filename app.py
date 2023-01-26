@@ -60,8 +60,7 @@ pause_counter = Counter(bpm = 1/3)
 screenshot_timer = Counter(bpm = 1)
 quadra_timer = Counter(bpm = 12)
 
-game = ChainedProcessor(pygame, display_surface, upper_stats, "hanzi chineese", STOCKS_DATA,
-                        (60*1000)/BPM)
+game = ChainedProcessor(pygame, display_surface, upper_stats, "hanzi chineese", STOCKS_DATA, (60*1000)/BPM)
 
 
 progression = Progression(new_line_counter,
@@ -114,7 +113,7 @@ for time_delta in delta_timer:
         skip_next = False
         continue
 
-    fpsClock.tick(30)
+    fpsClock.tick(25)
     display_surface.fill(white)
 
     if paused:
@@ -257,10 +256,10 @@ for time_delta in delta_timer:
         if not paused:
 
             if len(pause_screenshots) < 9:
-                pause_screenshots.append(screenshot_to_image(pyautogui.screenshot(region=(0, 0, W, H))))
+                pause_screenshots.append(screenshot_to_image(pyautogui.screenshot(region=((3400-W)//2, 0, W, H))))
             else:
                 del pause_screenshots[0]
-                pause_screenshots.append(screenshot_to_image(pyautogui.screenshot(region=(0, 0, W, H))))
+                pause_screenshots.append(screenshot_to_image(pyautogui.screenshot(region=((3400-W)//2, 0, W, H))))
 
 
             skip_next = True
