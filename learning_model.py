@@ -209,9 +209,9 @@ class ChainedFeature():
         self.decreased = False
         self.rised = False
         self.attached_image = "" 
-        self.basic_timing_per_level = {0:30,
-                                       1:30,
-                                       2:30}
+        self.basic_timing_per_level = {0:45,
+                                       1:45,
+                                       2:45}
     def pre_process_candles(self, source = None, only_visual = False):
 
         if not source:
@@ -412,6 +412,7 @@ class ChainedFeature():
                     if len(high_low_line) > 6: 
                         if high_low_line[-4][1] > high_low_line[-6][1] and high_low_line[-4][1] > high_low_line[-2][1]:
                             del high_low_line[-4]
+                            high_low_line[-4].append(2)
                 elif candle.h > high_low_line[-1][1]:
                     high_low_line[-1] = [candle.index, candle.h]
                     last_high = True
@@ -424,15 +425,16 @@ class ChainedFeature():
                     if len(high_low_line) > 6: 
                         if high_low_line[-4][1] < high_low_line[-6][1] and high_low_line[-4][1] < high_low_line[-1][1]:
                             del high_low_line[-4]
+                            high_low_line[-4].append(2)
                 elif candle.l < high_low_line[-1][1]:
                     high_low_line[-1] = [candle.index, candle.l]
                     last_high = False
 
         special_lines.append(high_low_line)
 
-        for i1, p1 in enumerate(high_low_line[::3]):
+        for i1, p1 in enumerate(high_low_line[::4]):
             for i2, p2 in enumerate(high_low_line):
-                if p2[0] - p1[0] <= 10 or p2[0] - p1[0] >= 50:
+                if p2[0] - p1[0] <= 3 or p2[0] - p1[0] >= 50:
                     continue
 
                 p3 =  high_low_line[i2-1] 
@@ -441,7 +443,10 @@ class ChainedFeature():
 
                 if p1[1] >= miv and p1[1] <= mxv:
 
-                    v_perce = (p1[1]-miv)/(mxv-miv) 
+                    if (mxv-miv)!=0:
+                        v_perce = (p1[1]-miv)/(mxv-miv) 
+                    else:
+                        v_perce = 1
 
                     if p3[1] < p2[1]:
                         I2 = p3[0]+(v_perce*(p2[0]-p3[0]))
@@ -532,12 +537,12 @@ class ChainedFeature():
         timing = self.basic_timing_per_level[self.feature_level]
         level = self.feature_level
         if is_solved:
-            self.basic_timing_per_level[self.feature_level] = timing +5 if timing < 50 else 50 
+            self.basic_timing_per_level[self.feature_level] = timing +3 if timing < 80 else 80 
             self.feature_level = level + 1 if level < 2 else 2 
             self.rised = True
             self.decreased = False
         else:
-            self.basic_timing_per_level[self.feature_level] = timing -5 if timing > 30 else 30 
+            self.basic_timing_per_level[self.feature_level] = timing -3 if timing > 40 else 40 
             self.feature_level = level -1 if level > 0 else 0 
             self.decreased = True
             self.rised = False
@@ -570,6 +575,7 @@ class FeaturesChain():
         self.last_review_urge = 0
         self.active_position = -1
         self.ascended = False
+        self.again = False
 
     def ascend(self):
         for feature in self.features:
@@ -626,9 +632,11 @@ class FeaturesChain():
             if self.fresh_errors <= 3:
                 self.progression_level += 1
             elif self.fresh_errors <= 6:
+                self.again = True
                 self.progression_level = self.progression_level
             else:
                 self.progression_level -= 1
+                self.again = True
                 if self.progression_level < 0:
                     self.progression_level = 0
 
@@ -760,7 +768,10 @@ class ChainedModel():
 
         next_feature = self.active_chain.get_next_feature()
         if not next_feature:
-            self.change_active_chain()
+            if self.active_chain.again:
+                self.active_chain.again = False
+            else:
+                self.change_active_chain()
             next_feature = self.active_chain.get_next_feature()
 
         if not next_feature in self.burning_chain:

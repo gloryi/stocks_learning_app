@@ -12,13 +12,17 @@ IMAGES_MINOR_DIR = os.path.join("/home/gloryi/Pictures/Lightning")
 
 MONITORING_LIST = os.path.join(os.getcwd(), "data_collector", "capital_asset_urls.csv")
 
+HAPTIC_FEEDBACK_CMD = os.path.join(os.getcwd(), "controller_features", "example.sh")
+HAPTIC_ERROR_CMD = os.path.join(os.getcwd(), "controller_features", "error.sh")
+HAPTIC_CORRECT_CMD = os.path.join(os.getcwd(), "controller_features", "correct.sh")
+
 BPM = 10
 
 #TEST = False
 #TEST_WIN_CHANCE = -1
 
 W = int(2800)
-H = int(1430)
+H = int(1425)
 
 HIGHER_TIMEFRAME_SCALE = 16
 MID_TIMEFRAME_SCALE = 2

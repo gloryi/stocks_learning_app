@@ -70,6 +70,7 @@ beat_time = new_line_counter.drop_time
 
 font = pygame.font.Font(CYRILLIC_FONT, 60, bold = True)
 pygame.event.set_allowed([pygame.QUIT, pygame.KEYDOWN, pygame.KEYUP])
+#pygame.event.set_grab(True)
 pygame.mouse.set_visible(False)
 fpsClock = pygame.time.Clock()
 
@@ -103,7 +104,7 @@ def screenshot_to_image(pil_image):
     data = pil_image.tobytes()
     py_image =  pygame.image.fromstring(data, size, mode)
     py_image =  py_image.convert()
-    image_scaled = pygame.transform.scale(py_image, (W//2, H//2))
+    image_scaled = pygame.transform.scale(py_image, (W//3, H//2))
     return image_scaled
 
 
@@ -113,16 +114,16 @@ for time_delta in delta_timer:
         skip_next = False
         continue
 
-    fpsClock.tick(25)
+    fpsClock.tick(50)
     display_surface.fill(white)
 
     if paused:
 
         display_surface.fill(white)
         for i, active_screenshot in enumerate(pause_screenshots):
-            I = (i - i%2)//2
-            J = i%2
-            display_surface.blit(active_screenshot, ((W//2)*J,(H//2)*I))
+            I = (i - i%3)//2
+            J = i%3
+            display_surface.blit(active_screenshot, ((W//3)*J,(H//2)*I))
 
         if quadra_timer.is_tick(time_delta):
             if quadra_phase == "INHALE":
@@ -255,7 +256,7 @@ for time_delta in delta_timer:
     if screenshot_timer.is_tick(time_delta):
         if not paused:
 
-            if len(pause_screenshots) < 9:
+            if len(pause_screenshots) < 15:
                 pause_screenshots.append(screenshot_to_image(pyautogui.screenshot(region=((3400-W)//2, 0, W, H))))
             else:
                 del pause_screenshots[0]

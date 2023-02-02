@@ -6,9 +6,13 @@ from itertools import compress, groupby
 import random
 import re
 import os
+import subprocess
 from config import W, H, CYRILLIC_FONT
 from config import CHINESE_FONT, VISUAL_PART
 from config import STAKE_PART, META_DIR, META_MINOR_DIR, IMAGES_MINOR_DIR
+from config import HAPTIC_FEEDBACK_CMD
+from config import HAPTIC_ERROR_CMD, HAPTIC_CORRECT_CMD
+from config import HIGHER_TIMEFRAME_SCALE
 #from config import TEST, TEST_WIN_CHANCE
 from colors import col_bg_darker, col_wicked_darker
 from colors import col_active_darker, col_bg_lighter
@@ -703,7 +707,7 @@ class ChainedDrawer():
             except Exception as e:
                 pass
 
-        def drwLineZon(zone ,x1,y1,x2,y2, col, strk = 1):
+        def drwLineZon(zone ,x1,y1,x2,y2, col, strk = 1, out_line = True):
             try:
                 X = zone[0]
                 Y = zone[1]
@@ -716,7 +720,8 @@ class ChainedDrawer():
 
                 clip_color = lambda _ : 0 if _ <=0 else 255 if _ >=255 else int(_)
                 lighter_col = [clip_color(col[0]*0.6), clip_color(col[1]*0.6), clip_color(col[2]*0.6)]
-                self.pygame_instance.draw.line(self.display_instance,lighter_col,(Y1,X1),(Y2,X2),strk+1)
+                if out_line:
+                    self.pygame_instance.draw.line(self.display_instance,lighter_col,(Y1,X1),(Y2,X2),strk+1)
                 self.pygame_instance.draw.line(self.display_instance,col,(Y1,X1),(Y2,X2),strk)
 
             except Exception as e:
@@ -1122,30 +1127,42 @@ class ChainedDrawer():
 
             p_delta = maxP - minP
 
-            volume_bars = [[0,0] for _ in range(60)]
+            volume_bars = [[0,0] for _ in range(25)]
 
             for i, candle in enumerate(candles):
                 higher_price = max(candle.o, candle.c)
                 lower_price = min(candle.o, candle.c)
-                high_idx = int(((higher_price - minP)/p_delta)*40)
-                low_idx = int(((lower_price - minP)/p_delta)*40)
+                high_idx = int(((higher_price - minP)/p_delta)*25)
+                low_idx = int(((lower_price - minP)/p_delta)*25)
 
                 num_bars = (high_idx - low_idx)+1
                 fill_vol = candle.v/num_bars
 
                 for bar_idx in range(low_idx, high_idx+1):
+                    if bar_idx >= len(volume_bars) or bar_idx <=0:
+                        continue
                     volume_bars[bar_idx][0] += fill_vol
-                    volume_bars[bar_idx][1] += fill_vol if candle.green else (-1)*fill_vol 
+                    if candle.green:
+                        volume_bars[bar_idx][1] += fill_vol
+                    else:
+                        volume_bars[bar_idx][1] -= fill_vol
 
             max_vol_cumm = max(volume_bars, key = lambda _ : _[0])[0]
             min_vol_cumm = min(volume_bars, key = lambda _ : _[0])[0]
             vol_range_delta = max_vol_cumm - min_vol_cumm
 
-            max_vol_abs = max(volume_bars, key = lambda _ : abs(_[1]))[1]
-            min_vol_abs = min(volume_bars, key = lambda _ : abs(_[1]))[1]
-            vol_abs_range_delta = max_vol_abs - min_vol_abs
+            max_vol_pos = max([_ for _ in volume_bars if _[1]>=0], key = lambda _ : _[1], default = [0,1])[1]
+            min_vol_pos = min([_ for _ in volume_bars if _[1]>=0], key = lambda _ : _[1], default = [0,0])[1]
 
-            volume_bars = [[(_[0] - min_vol_cumm)/vol_range_delta, (_[1])/vol_abs_range_delta] for _ in volume_bars]
+            max_vol_neg = max([_ for _ in volume_bars if _[1]<0], key = lambda _ : _[1], default = [0,0])[1]
+            min_vol_neg = min([_ for _ in volume_bars if _[1]<0], key = lambda _ : _[1], default = [0,-1])[1]
+
+            pos_vol_range = max_vol_pos - min_vol_pos if max_vol_pos!=min_vol_pos else max_vol_pos 
+            neg_vol_range = max_vol_neg - min_vol_neg if max_vol_neg != min_vol_neg else max_vol_neg
+
+            normalize_abs = lambda _ : _/pos_vol_range if _ >= 0 else _/neg_vol_range
+
+            volume_bars = [[(_[0] - min_vol_cumm)/vol_range_delta, normalize_abs(_[1])] for _ in volume_bars]
 
             return volume_bars
 
@@ -1167,23 +1184,28 @@ class ChainedDrawer():
             volume_bars = fill_volume_bars(candles, minV, maxV) 
             price_range = maxV - minV
             for i, volume_bar in enumerate(volume_bars):
-                pr1 = fit_to_zon(((i+0.35)/40)*price_range + minV, minV, maxV)
-                pr2 = fit_to_zon(((i+1-0.35)/40)*price_range + minV, minV, maxV)
+                pr1 = fit_to_zon(((i+0.4)/25)*price_range + minV, minV, maxV)
+                pr2 = fit_to_zon(((i+1-0.4)/25)*price_range + minV, minV, maxV)
                 prm = (pr1+pr2)/2
                 volume_rel = volume_bar[0]
-                #col = colors.col_wicked_darker if volume_bar[1] else colors.col_wicked_lighter
-                col = colors.dark_green if volume_bar[1] else colors.dark_red
+                if volume_bar[1] >= 0:
+                    col = colors.dark_green
+                else:
+                    col = colors.dark_red
+                #col = colors.dark_green if volume_bar[1] else colors.dark_red
                 abs_fill = abs(volume_bar[1])
                 col = interpolate(colors.white, col, abs_fill)
-                # drwLineZon(zone, 1-prm,(0),
-                #                 1-prm,(volume_rel/6),col)
-                # drwSqrZon(zone, 1-pr1,(0),
-                #                 1-pr2,(volume_rel/8),col)
 
-                drwLineZon(zone, 1-pr1,(0),
-                                1-prm,(volume_rel/6),col, strk = 4)
-                drwLineZon(zone, 1-prm,(volume_rel/6),
-                                1-pr2,(0),col, strk = 4)
+                if line.static_variation == 1:
+                    drwLineZon(zone, 1-prm,(1),
+                                1-prm,1-(volume_rel/6),col, strk = 7, out_line=False)
+                else:
+                    drwLineZon(zone, 1-prm,(0),
+                                1-prm,(volume_rel/4),col, strk = 8, out_line=False)
+                if line.idle_x and line.mode=="QUESTION":
+                    crs_d = volume_rel/75
+                    drwLineZon(draw_tasks[0][1], 1-prm,line.idle_x-crs_d,1-prm,line.idle_x+crs_d,col, strk = 4) 
+
 
             special_ones = []
 
@@ -1268,16 +1290,16 @@ class ChainedDrawer():
 
         if line.mode == "QUESTION" and not line.burn_mode and line.idle_x:
             line_color = colors.col_bt_down
-            strk = 2
+            strk = 3
             cross = 2/DPTH
             if not line.initial_action_done:
                 if line.initial_action == "ENTRY":
                     line_color = (150,255,150)
-                    strk = 4
-                    cross += 3/DPTH
+                    strk = 5
+                    cross += 4/DPTH
                 if line.initial_action == "SL":
-                    strk = 4
-                    cross += 3/DPTH
+                    strk = 5
+                    cross += 4/DPTH
                     line_color = (255,150,150)
 
             drwLineZon(draw_tasks[0][1], 1,line.idle_x,0,line.idle_x,line_color, strk = strk)
@@ -1337,14 +1359,14 @@ class ChainedDrawer():
             _maxV = candle.h
             p1 = candle.index
             p2 = candle.index
-            #col = [col[0]//2, col[1]//2, col[2]//2]
             drawCandle(sp_zone, candle, _minV, _maxV, p1, p2,
                         entry=entry, stop=stop, profit=profit, idle=idle,
                         predefined_color = col, dpth = 1, draw_special = True)
             additional_squares.remove(sp_zone)
 
 
-        special_lines = lines if line.mode!="QUESTION" else lines[1:]
+        special_lines = lines if line.mode!="QUESTION" or line.static_variation%3 == 0 else lines[1:]
+        lines_stroke = 3 if not line.static_variation%3==0 else 5
         #if line.mode != "QUESTION":
             #if True:
         for special_line in special_lines:
@@ -1353,8 +1375,19 @@ class ChainedDrawer():
                 y2 = fit_to_zon(p2[1], minV, maxV)
                 x1 = (p1[0]-o1+0.5)/DPTH
                 x2 = (p2[0]-o1+0.5)/DPTH
-                rgb_col = interpolate(colors.white, colors.col_black, abs(line.variation/40))
-                drwLineZon(draw_tasks[0][1], 1-y1,x1,1-y2,x2,rgb_col, strk = 2)
+                if p2[1] < p1[1]:
+                    rgb_col = interpolate(colors.col_black, colors.dark_red, abs(line.variation/40))
+                elif p2[1] > p1[1]:
+                    rgb_col = interpolate(colors.dark_green, colors.col_black, abs(line.variation/40))
+                else:
+                    rgb_col = interpolate(colors.white, colors.col_black, abs(line.variation/40))
+                drwLineZon(draw_tasks[0][1], 1-y1,x1,1-y2,x2,rgb_col, strk = lines_stroke, out_line=False)
+                if len(p1)>2:
+                    delta = (max(p1[1], p2[1]) - min(p1[1], p2[1]))*0.3
+                    y3 = fit_to_zon(p1[1]+delta, minV, maxV)
+                    y4 = fit_to_zon(p2[1]+delta, minV, maxV)
+                    drwLineZon(draw_tasks[0][1], 1-y3,x1,1-y4,x2,rgb_col, strk = lines_stroke, out_line=False)
+
 
         position_y_low = lambda _ : _*0.25
         position_y_high = lambda _ : _*0.25 + 0.7
@@ -1364,6 +1397,13 @@ class ChainedDrawer():
             place_y_shift = position_y_high 
 
         if True:
+
+            if line.static_variation%2==0:
+                thn_htf_ln = 10
+            else:
+                thn_htf_ln = 5
+                thk_htf_ln = 4
+
             minH = min(high_tf_line, key = lambda _ : _[1])[1]
             maxH = max(high_tf_line, key = lambda _ : _[1])[1]
 
@@ -1377,13 +1417,65 @@ class ChainedDrawer():
             if line.tp:
                 yP = place_y_shift(fit_to_zon(line.tp, minH, maxH))
 
+            y1 = place_y_shift(fit_to_zon(high_tf_line[0][1], minH, maxH))
+            y2 = place_y_shift(fit_to_zon(high_tf_line[-1][1], minH, maxH))
+            x0 = (high_tf_line[0][0])/(DPTH*(len(high_tf_line)/VISUAL_PART)/0.25) + 0.4
+            x1 = (high_tf_line[0][0]+0.5)/(DPTH*(len(high_tf_line)/VISUAL_PART)/0.25) + 0.4
+            x2 = (high_tf_line[-1][0]+0.5)/(DPTH*(len(high_tf_line)/VISUAL_PART)/0.25) + 0.4
+            x3 = (high_tf_line[-1][0]+2)/(DPTH*(len(high_tf_line)/VISUAL_PART)/0.25) + 0.4
+
+            max_point = max(high_tf_line, key = lambda _ : _[1])
+            ymx = place_y_shift(fit_to_zon(max_point[1], minH, maxH))
+            xmx = (max_point[0])/(DPTH*(len(high_tf_line)/VISUAL_PART)/0.25) + 0.4
+
+            min_point = min(high_tf_line, key = lambda _ : _[1])
+            ymn = place_y_shift(fit_to_zon(min_point[1], minH, maxH))
+            xmn = (min_point[0])/(DPTH*(len(high_tf_line)/VISUAL_PART)/0.25) + 0.4
+
+            len_htf = len(high_tf_line)
+            zone_border = int(len_htf*(1-1/HIGHER_TIMEFRAME_SCALE))
+
+            xz = (high_tf_line[zone_border][0])/(DPTH*(len(high_tf_line)/VISUAL_PART)/0.25) + 0.4
+
+            col1 = colors.col_black
+            col2 = colors.mid_color
+            rgb_col = interpolate(col1, col2, abs(line.variation/40))
+            drwLineZon(draw_tasks[0][1], 1-y1,x0,1-y2,x3,rgb_col, strk = thn_htf_ln, out_line=False)
+            col1 = colors.col_black
+            col2 = colors.mid_color
+            rgb_col = interpolate(col1, col2, abs(line.variation/40))
+            drwLineZon(draw_tasks[0][1], 1-ymn,xmn,1-ymx,xmx,rgb_col, strk = thn_htf_ln, out_line=False)
+
+            col1 = colors.col_black
+            col2 = colors.col_active_darker
+            rgb_col = interpolate(col1, col2, abs(line.variation/40))
+            drwLineZon(draw_tasks[0][1], 1-ymx,xz,1-ymn,xz,rgb_col, strk = thn_htf_ln, out_line=False)
+
+            col1 = colors.dark_red
+            col2 = colors.white
+            rgb_col = interpolate(col1, col2, abs(line.variation/40))
+            drwLineZon(draw_tasks[0][1], 1-ymx,xmx,1-y2,x3,rgb_col, strk = thn_htf_ln, out_line=False)
+            col1 = colors.dark_green
+            col2 = colors.white
+            rgb_col = interpolate(col1, col2, abs(line.variation/40))
+            drwLineZon(draw_tasks[0][1], 1-y1,x0,1-ymx,xmx,rgb_col, strk = thn_htf_ln, out_line=False)
+
+            col1 = colors.dark_green
+            col2 = colors.white
+            rgb_col = interpolate(col1, col2, abs(line.variation/40))
+            drwLineZon(draw_tasks[0][1], 1-ymn,xmn,1-y2,x3,rgb_col, strk = thn_htf_ln, out_line=False)
+            col1 = colors.dark_red
+            col2 = colors.white
+            rgb_col = interpolate(col1, col2, abs(line.variation/40))
+            drwLineZon(draw_tasks[0][1], 1-y1,x0,1-ymn,xmn,rgb_col, strk = thn_htf_ln, out_line=False)
+
             for i,(p1, p2) in enumerate(zip(high_tf_line[:-1], high_tf_line[1:])):
                 y1 = place_y_shift(fit_to_zon(p1[1], minH, maxH))
                 y2 = place_y_shift(fit_to_zon(p2[1], minH, maxH))
-                x0 = (p1[0]-2)/(DPTH*(len(high_tf_line)/VISUAL_PART)/0.4) + 0.30
-                x1 = (p1[0]+0.5)/(DPTH*(len(high_tf_line)/VISUAL_PART)/0.4) + 0.30
-                x2 = (p2[0]+0.5)/(DPTH*(len(high_tf_line)/VISUAL_PART)/0.4) + 0.30
-                x3 = (p2[0]+2)/(DPTH*(len(high_tf_line)/VISUAL_PART)/0.4) + 0.30
+                x0 = (p1[0]-2)/(DPTH*(len(high_tf_line)/VISUAL_PART)/0.25) + 0.4
+                x1 = (p1[0]+0.5)/(DPTH*(len(high_tf_line)/VISUAL_PART)/0.25) + 0.4
+                x2 = (p2[0]+0.5)/(DPTH*(len(high_tf_line)/VISUAL_PART)/0.25) + 0.4
+                x3 = (p2[0]+2)/(DPTH*(len(high_tf_line)/VISUAL_PART)/0.25) + 0.4
 
                 col1 = colors.white
                 col2 = colors.col_black
@@ -1402,17 +1494,18 @@ class ChainedDrawer():
                     col2 = colors.feature_bg
 
                 if yH >= y1 and yH <= y2:
-                    drwLineZon(draw_tasks[0][1], 1-yH,x0,1-yH,x3,colors.col_black, strk = 2)
+                    drwLineZon(draw_tasks[0][1], 1-yH,x0,1-yH,x3,colors.col_black, strk = 5, out_line=False)
                 if yL >= y1 and yL <= y2:
-                    drwLineZon(draw_tasks[0][1], 1-yL,x0,1-yL,x3,colors.col_black, strk = 2)
+                    drwLineZon(draw_tasks[0][1], 1-yL,x0,1-yL,x3,colors.col_black, strk = 5, out_line=False)
 
                 if yE and yE >= y1 and yE <= y2:
-                    drwLineZon(draw_tasks[0][1], 1-yE,x0,1-yE,x3,(150,255,150), strk = 2)
+                    drwLineZon(draw_tasks[0][1], 1-yE,x0,1-yE,x3,(150,255,150), strk = 4, out_line=False)
                 if yP and yP >= y1 and yP <= y2:
-                    drwLineZon(draw_tasks[0][1], 1-yP,x0,1-yP,x3,(255,150,255), strk = 2)
+                    drwLineZon(draw_tasks[0][1], 1-yP,x0,1-yP,x3,(255,150,255), strk = 4, out_line=False)
 
-                rgb_col = interpolate(col1, col2, abs(line.variation/40))
-                drwLineZon(draw_tasks[0][1], 1-y1,x1,1-y2,x2,rgb_col, strk = 3)
+                if not line.static_variation%2==0:
+                    rgb_col = interpolate(col1, col2, abs(line.variation/40))
+                    drwLineZon(draw_tasks[0][1], 1-y1,x1,1-y2,x2,rgb_col, strk = 4, out_line=False)
 
 
 ######################################
@@ -1542,6 +1635,9 @@ class ChainedProcessor():
             NEW_EVENT = False
             self.ui_ref.bg_color = colors.dark_green
 
+            if random.randint(0,10) > 5 and HAPTIC_CORRECT_CMD:
+                subprocess.Popen(["bash", HAPTIC_CORRECT_CMD])
+
             if self.last_positive and random.randint(0,10) > 5:
                 rnd_image = self.producer.produce_minor_image()
                 self.ui_ref.set_image(rnd_image, minor = True)
@@ -1563,6 +1659,9 @@ class ChainedProcessor():
             NEW_EVENT = False
             self.ui_ref.bg_color = colors.dark_red
             self.last_positive = False
+
+            if random.randint(0,10) > 5 and HAPTIC_ERROR_CMD:
+                subprocess.Popen(["bash", HAPTIC_ERROR_CMD])
 
             if not self.active_entity or self.active_entity.uid == self.last_uid:
                 return 0

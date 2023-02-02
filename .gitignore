@@ -8,6 +8,10 @@ trading_affirmations.csv
 Affirm/
 Knowledge/
 *api_keys.py
+#not sure about copyright stuff
+#btw made from this cli util castable as non-interactive (arguments-based) subprocess
+#https://github.com/flosse/linuxconsole/blob/master/utils/fftest.c
+controller_features/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

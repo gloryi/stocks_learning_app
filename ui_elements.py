@@ -149,8 +149,51 @@ class UpperLayout():
                                    (H)*self.timing_ratio, width=10)
 
         if self.meta_text:
-            self.place_text(f"{self.meta_text}", W//2,
-                        H-H//4,
+            line_1 = H//2 - H//4
+            line_2 = H//2
+            line_3 = H//2 + H//4
+            delta_1 = H//4
+            delta_05 = H//8
+            delta_2 = H//2
+            w_line = line_2
+            w_pos_1 =  W*(1-self.timing_ratio)
+            w_pos_2 =  W*(self.timing_ratio)
+            w_pos = w_pos_1
+            if "PAPERCUT" in self.meta_text:
+                w_line = line_1
+                w_pos = w_pos_2
+            elif "EXECUTION" in self.meta_text:
+                w_line = line_3
+                w_pos = w_pos_2
+            elif "WOUNDED" in self.meta_text:
+                w_line = line_3 - delta_1*self.timing_ratio
+                w_pos = w_pos_2
+            elif "INJURED" in self.meta_text:
+                w_line = line_1 + delta_1*self.timing_ratio
+                w_pos = w_pos_2
+            elif "MASACRE" in self.meta_text or "BLAST" in self.meta_text:
+                w_line = line_2
+            elif "CLATCH" in self.meta_text:
+                w_line = line_3 - delta_05*self.timing_ratio
+            elif "FLEED" in self.meta_text:
+                w_line = line_1 + delta_05*self.timing_ratio
+            elif "STUBBED" in self.meta_text:
+                w_line = line_3 - delta_2*self.timing_ratio
+            elif "NAILED" in self.meta_text:
+                w_line = line_1 + delta_2*self.timing_ratio
+            elif "DROP" in self.meta_text:
+                w_line = line_3 + delta_05*self.timing_ratio
+                w_pos = w_pos_2
+            elif "MISFIRE" in self.meta_text:
+                w_line = line_1 - delta_05*self.timing_ratio
+                w_pos = w_pos_2
+            else:
+                w_line = line_2
+
+
+            self.place_text(f"{self.meta_text}",
+                        w_pos,
+                        w_line,
                         transparent = True,
                         renderer = self.large_font,
                         base_col = (90,150,90) if self.last_positive else (150, 90, 90))
