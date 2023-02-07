@@ -4,24 +4,27 @@ import colors
 from itertools import islice
 import os
 
+from rendering_backend import backend_switch
+backend = backend_switch().get_backend_ref()
+
 class UpperLayout():
-    def __init__(self, pygame_instance, display_instance):
+    def __init__(self, display_instance):
         self.W = W
         self.H = H
         self.y1 = 0 
         self.y2 = self.H//8
         self.y3 = self.H - self.H//16
         self.higher_center = (self.y1 + self.y2)/2
-        self.pygame_instance = pygame_instance
+
         self.display_instance = display_instance
         self.backgroudn_color = (60, 60, 60)
-        font_file = pygame_instance.font.match_font("setofont")
-        self.smallest_font2 = pygame_instance.font.Font(font_file, 15)
-        self.smallest_font = pygame_instance.font.Font(font_file, 20)
-        self.small_font = pygame_instance.font.Font(font_file, 30)
-        self.font = pygame_instance.font.Font(font_file, 50)
-        self.large_font = pygame_instance.font.Font(font_file, 60)
-        self.utf_font = self.pygame_instance.font.Font(CHINESE_FONT, 150, bold = True)
+        font_file = backend.api().font.match_font("setofont")
+        self.smallest_font2 = backend.api().font.Font(font_file, 15)
+        self.smallest_font = backend.api().font.Font(font_file, 20)
+        self.small_font = backend.api().font.Font(font_file, 30)
+        self.font = backend.api().font.Font(font_file, 50)
+        self.large_font = backend.api().font.Font(font_file, 60)
+        self.utf_font = backend.api().font.Font(CHINESE_FONT, 150, bold = True)
         self.combo = 1
         self.tiling = ""
         self.tiling_utf = True
@@ -44,11 +47,12 @@ class UpperLayout():
         self.image_minor = None
         self.meta_text = ""
         self.last_positive = False
-        self.trans_surface = self.pygame_instance.Surface((W,H)) 
+
+        self.trans_surface = backend.api().Surface((W,H)) 
         self.trans_surface.set_alpha(160)
         self.trans_surface.fill((30,0,30))
 
-        self.trans_surface_minor = self.pygame_instance.Surface((W,H)) 
+        self.trans_surface_minor = backend.api().Surface((W,H)) 
         self.trans_surface_minor.set_alpha(40)
         self.trans_surface_minor.fill((30,0,30))
 
@@ -74,8 +78,8 @@ class UpperLayout():
             if len(self.images_cached) > 100:
                 self.images_cached = dict(islice(self.images_cached.items(), 50))
 
-            image_converted = self.pygame_instance.image.load(path_to_image).convert()
-            image_scaled = self.pygame_instance.transform.scale(image_converted, (W, H))
+            image_converted = backend.api().image.load(path_to_image).convert()
+            image_scaled = backend.api().transform.scale(image_converted, (W, H))
 
             self.images_cached[path_to_image]  = image_scaled
 
@@ -143,10 +147,10 @@ class UpperLayout():
         col2 = interpolate(colors.col_wicked_darker, colors.col_correct, self.combo/10)
         line_color = interpolate(colors.col_active_lighter, col2, 1.0-self.timing_ratio)
 
-        self.pygame_instance.draw.circle(self.display_instance,
+        backend.api().draw.circle(self.display_instance,
                                   line_color,
-                                  (W//2, H),
-                                   (H)*self.timing_ratio, width=10)
+                                  (W//2, H//2),
+                                   (H//2)*self.timing_ratio, width=5)
 
         if self.meta_text:
             line_1 = H//2 - H//4
@@ -156,8 +160,8 @@ class UpperLayout():
             delta_05 = H//8
             delta_2 = H//2
             w_line = line_2
-            w_pos_1 =  W*(1-self.timing_ratio)
-            w_pos_2 =  W*(self.timing_ratio)
+            w_pos_1 =  (W//2)*(1-self.timing_ratio)**2
+            w_pos_2 =  W - (W//2)*(1-self.timing_ratio)**2
             w_pos = w_pos_1
             if "PAPERCUT" in self.meta_text:
                 w_line = line_1
@@ -166,26 +170,26 @@ class UpperLayout():
                 w_line = line_3
                 w_pos = w_pos_2
             elif "WOUNDED" in self.meta_text:
-                w_line = line_3 - delta_1*self.timing_ratio
+                w_line = line_3 - delta_1*self.timing_ratio**2
                 w_pos = w_pos_2
             elif "INJURED" in self.meta_text:
-                w_line = line_1 + delta_1*self.timing_ratio
+                w_line = line_1 + delta_1*self.timing_ratio**2
                 w_pos = w_pos_2
             elif "MASACRE" in self.meta_text or "BLAST" in self.meta_text:
                 w_line = line_2
             elif "CLATCH" in self.meta_text:
-                w_line = line_3 - delta_05*self.timing_ratio
+                w_line = line_3 - delta_05*self.timing_ratio**2
             elif "FLEED" in self.meta_text:
-                w_line = line_1 + delta_05*self.timing_ratio
+                w_line = line_1 + delta_05*self.timing_ratio**2
             elif "STUBBED" in self.meta_text:
-                w_line = line_3 - delta_2*self.timing_ratio
+                w_line = line_3 - delta_2*self.timing_ratio**2
             elif "NAILED" in self.meta_text:
-                w_line = line_1 + delta_2*self.timing_ratio
+                w_line = line_1 + delta_2*self.timing_ratio**2
             elif "DROP" in self.meta_text:
-                w_line = line_3 + delta_05*self.timing_ratio
+                w_line = line_3 + delta_05*self.timing_ratio**2
                 w_pos = w_pos_2
             elif "MISFIRE" in self.meta_text:
-                w_line = line_1 - delta_05*self.timing_ratio
+                w_line = line_1 - delta_05*self.timing_ratio**2
                 w_pos = w_pos_2
             else:
                 w_line = line_2
@@ -203,7 +207,7 @@ class UpperLayout():
 
 
         #Balance and metrics
-        self.pygame_instance.draw.rect(self.display_instance,
+        backend.api().draw.rect(self.display_instance,
                                   line_color,
                                   ((W//2 - ((W//4)*(self.percent))/2),
                                    45,

@@ -1,15 +1,14 @@
 from config import BPM
+from rendering_backend import backend_switch
+backend = backend_switch().get_backend_ref()
 
-def global_timer(pygame_instance):
-    last_frame_timestamp = pygame_instance.time.get_ticks()
+def global_timer():
+    last_frame_timestamp = backend.api().time.get_ticks()
     skip_even_frames = True
     while True:
-        current_frame_timestamp = pygame_instance.time.get_ticks()
+        current_frame_timestamp = backend.api().time.get_ticks()
         frame_timedelta = (current_frame_timestamp - last_frame_timestamp)
         last_frame_timestamp = current_frame_timestamp
-        #skip_even_frames = False if skip_even_frames else True 
-        #if skip_even_frames:
-            #continue
         yield frame_timedelta
 
 class Counter():

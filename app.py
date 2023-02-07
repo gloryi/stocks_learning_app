@@ -1,4 +1,6 @@
-import pygame
+from rendering_backend import backend_switch
+backend = backend_switch().get_backend_ref()
+
 from time_utils import global_timer, Counter, Progression
 
 from feature_chain_mode import ChainedProcessor
@@ -13,13 +15,13 @@ import pyautogui
 
 from ui_elements import UpperLayout
 
-pygame.init()
-display_surface = pygame.display.set_mode((W, H))
-pygame.display.set_caption('STOCKS_TRAINER_067')
-trans_surface = pygame.Surface((W, H))
+backend.api().init()
+display_surface = backend.api().display.set_mode((W, H))
+backend.api().display.set_caption('STOCKS_TRAINER_067')
+trans_surface = backend.api().Surface((W, H))
 trans_surface.set_alpha(100)
 trans_surface.fill((40,0,40))
-trans_surface2 = pygame.Surface((W, H))
+trans_surface2 = backend.api().Surface((W, H))
 trans_surface2.set_alpha(50)
 trans_surface2.fill((40,0,40))
 
@@ -51,16 +53,16 @@ quadra_col_2 = colors.col_bt_pressed
 
 skip_next = False
 
-delta_timer = global_timer(pygame)
+delta_timer = global_timer()
 
-upper_stats = UpperLayout(pygame, display_surface)
+upper_stats = UpperLayout(display_surface)
 
 new_line_counter = Counter(upper_stats)
 pause_counter = Counter(bpm = 1/3)
 screenshot_timer = Counter(bpm = 1)
 quadra_timer = Counter(bpm = 12)
 
-game = ChainedProcessor(pygame, display_surface, upper_stats, "hanzi chineese", STOCKS_DATA, (60*1000)/BPM)
+game = ChainedProcessor(display_surface, upper_stats, "hanzi chineese", STOCKS_DATA, (60*1000)/BPM)
 
 
 progression = Progression(new_line_counter,
@@ -68,11 +70,10 @@ progression = Progression(new_line_counter,
 
 beat_time = new_line_counter.drop_time
 
-font = pygame.font.Font(CYRILLIC_FONT, 60, bold = True)
-pygame.event.set_allowed([pygame.QUIT, pygame.KEYDOWN, pygame.KEYUP])
-#pygame.event.set_grab(True)
-pygame.mouse.set_visible(False)
-fpsClock = pygame.time.Clock()
+font = backend.api().font.Font(CYRILLIC_FONT, 60, bold = True)
+backend.api().event.set_allowed([backend.api().QUIT, backend.api().KEYDOWN, backend.api().KEYUP])
+backend.api().mouse.set_visible(False)
+fpsClock = backend.api().time.Clock()
 
 mode = "STOCKS"
 active_game = game
@@ -80,10 +81,10 @@ active_stats = upper_stats
 meta = ""
 meta_minor = []
 
-base_font = pygame.font.match_font("setofont")
-base_font = pygame.font.Font(base_font, 35)
-minor_font = pygame.font.match_font("setofont")
-minor_font = pygame.font.Font(minor_font, 30)
+base_font = backend.api().font.match_font("setofont")
+base_font = backend.api().font.Font(base_font, 35)
+minor_font = backend.api().font.match_font("setofont")
+minor_font = backend.api().font.Font(minor_font, 30)
 
 upper_stats.active_balance = 100
 
@@ -102,9 +103,9 @@ def screenshot_to_image(pil_image):
     size = pil_image.size
     mode = pil_image.mode
     data = pil_image.tobytes()
-    py_image =  pygame.image.fromstring(data, size, mode)
+    py_image =  backend.api().image.fromstring(data, size, mode)
     py_image =  py_image.convert()
-    image_scaled = pygame.transform.scale(py_image, (W//3, H//2))
+    image_scaled = backend.api().transform.scale(py_image, (W//3, H//2))
     return image_scaled
 
 
@@ -114,7 +115,7 @@ for time_delta in delta_timer:
         skip_next = False
         continue
 
-    fpsClock.tick(50)
+    fpsClock.tick(30)
     display_surface.fill(white)
 
     if paused:
@@ -162,11 +163,11 @@ for time_delta in delta_timer:
 
         trans_surface.fill((40,0,40))
         trans_surface2.fill((40,0,40))
-        pygame.draw.circle(trans_surface,
+        backend.api().draw.circle(trans_surface,
                               interpolate(quadra_col_1, quadra_col_2, quadra_timer.get_percent()),
                               (W//2, H//2),
                                (H//2-100)*quadra_w_perce1+100)
-        pygame.draw.circle(trans_surface,
+        backend.api().draw.circle(trans_surface,
                               interpolate(quadra_col_1, quadra_col_2, quadra_timer.get_percent()**2),
                               (W//2, H//2),
                                (H//2-50)*quadra_w_perce2+50, width = 3)
@@ -217,12 +218,11 @@ for time_delta in delta_timer:
                                                    quadra_w_perce1))
 
     if paused:
-        pygame.display.update()
-        keys = pygame.key.get_pressed()
+        backend.api().display.update()
+        keys = backend.api().key.get_pressed()
 
-        if keys[pygame.K_SPACE]:
+        if keys[backend.api().K_SPACE]:
             paused = False
-
 
             if len(pause_progression) >=5:
                 pause_progression = []
@@ -233,9 +233,9 @@ for time_delta in delta_timer:
                 streak = 0
                 max_streak = 0
 
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
+        for event in backend.api().event.get():
+            if event.type == backend.api().QUIT:
+                backend.api().quit()
 
                 quit()
         continue
@@ -249,7 +249,7 @@ for time_delta in delta_timer:
 
 
     if new_line_counter.is_tick(time_delta):
-        pyautogui.moveTo(W//3*2, H//2)
+        pyautogui.moveTo(W//2, H//2)
         next_tick_time, meta, meta_minor = active_game.add_line()
         new_line_counter.modify_bpm(next_tick_time)
 
@@ -302,16 +302,16 @@ for time_delta in delta_timer:
     beat_time = progression.synchronize_tick()
 
 
-    pygame.display.update()
+    backend.api().display.update()
 
-    keys = pygame.key.get_pressed()
-    if keys[pygame.K_v]:
+    keys = backend.api().key.get_pressed()
+    if keys[backend.api().K_v]:
         paused = True
 
-    for event in pygame.event.get():
+    for event in backend.api().event.get():
 
-        if event.type == pygame.QUIT:
-            pygame.quit()
+        if event.type == backend.api().QUIT:
+            backend.api().quit()
 
             quit()
-pygame.quit()
+backend.api().quit()
