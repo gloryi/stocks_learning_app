@@ -2,6 +2,7 @@ from config import W, H, CHINESE_FONT
 from colors import white
 import colors
 from itertools import islice
+import random
 import os
 
 from rendering_backend import backend_switch
@@ -41,7 +42,13 @@ class UpperLayout():
         self.mastered = 0
         self.to_master = 0
         self.variation = 0
+        self.random_variation = 0
         self.variation_on_rise = True
+        self.blink = False
+        #self.blink = True
+        self.timer_x = W//2
+        self.timer_y = H//2
+
         self.images_cached = {} 
         self.image = None
         self.image_minor = None
@@ -67,7 +74,21 @@ class UpperLayout():
         textRect.center = (x, y)
         self.display_instance.blit(text, textRect)
 
+    def co_variate(self):
+        self.random_variation = random.randint(0,10)
+
+        # if self.random_variation >9:
+        #     self.blink = True
+        # else:
+        #     self.blink = False
+
+        if self.random_variation > 5:
+            self.timer_x = random.randint(W//2-W//4, W//2+W//4)
+            self.timer_y = random.randint(H//2-H//4, H//2+H//4)
+
     def set_image(self, path_to_image, minor=False):
+        self.co_variate()
+
         if not path_to_image:
             if not minor:
                 self.image = None
@@ -113,7 +134,7 @@ class UpperLayout():
         else:
             self.variation -= 1
 
-        if self.variation > 10:
+        if self.variation > 2:
             self.variation_on_rise = False
         elif self.variation < 0:
             self.variation_on_rise = True
@@ -144,13 +165,18 @@ class UpperLayout():
                                                    inter_color(col1[1], col2[1], self.timing_ratio),
                                                    inter_color(col1[2], col2[2], self.timing_ratio))
 
-        col2 = interpolate(colors.col_wicked_darker, colors.col_correct, self.combo/10)
-        line_color = interpolate(colors.col_active_lighter, col2, 1.0-self.timing_ratio)
 
+        wdth = 5 if not self.blink else 75
+        r_factor = 1 if not self.blink else 2
+        col2 = interpolate(colors.col_wicked_darker, colors.col_correct, self.combo/10)
+        if not self.blink:
+            line_color = interpolate(colors.col_active_lighter, col2, 1.0-self.timing_ratio)
+        else:
+            line_color = random.choice([colors.mid_color, colors.col_black, colors.dark_red, colors.dark_green, colors.white])
+            #line_color = interpolate(colors.mid_color, colors.col_black, 1.0-self.variation/2)
         backend.api().draw.circle(self.display_instance,
-                                  line_color,
-                                  (W//2, H//2),
-                                   (H//2)*self.timing_ratio, width=5)
+                                  line_color, (self.timer_x, self.timer_y),
+                                  r_factor*min(W-self.timer_x, self.timer_x, H-self.timer_y, self.timer_y)*self.timing_ratio, width=wdth)
 
         if self.meta_text:
             line_1 = H//2 - H//4
@@ -206,7 +232,9 @@ class UpperLayout():
         line_color = (int((235)*(1-self.percent)),int((235)*(self.percent)),0)
 
 
-        #Balance and metrics
+        if self.blink:
+            return
+
         backend.api().draw.rect(self.display_instance,
                                   line_color,
                                   ((W//2 - ((W//4)*(self.percent))/2),

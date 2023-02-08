@@ -5,6 +5,7 @@ import csv
 from config import PROGRESSION_FILE, IMAGES_MAPPING_FILE
 from config import VISUAL_PART, STAKE_PART
 from config import HIGHER_TIMEFRAME_SCALE, MID_TIMEFRAME_SCALE
+from config import GENERATION_TIME_SIZE
 #from config import TEST
 
 knwon_prices = {}
@@ -116,7 +117,7 @@ def get_candles(asset_name, index):
     if asset_name not in knwon_prices:
         fetch_prices(asset_name)
 
-    for candle in knwon_prices[asset_name][int(index)-(350-140):]:
+    for candle in knwon_prices[asset_name][int(index)-(VISUAL_PART-GENERATION_TIME_SIZE):]:
         yield candle
 
 def get_dense(asset_name, index):
@@ -124,7 +125,7 @@ def get_dense(asset_name, index):
     if asset_name not in dense_prices:
         fetch_prices(asset_name)
 
-    initial_ind = max(0, (int(index)-210+VISUAL_PART) - VISUAL_PART*HIGHER_TIMEFRAME_SCALE)
+    initial_ind = max(0, (int(index)-(VISUAL_PART-GENERATION_TIME_SIZE)+VISUAL_PART) - VISUAL_PART*HIGHER_TIMEFRAME_SCALE)
     range_selector = filter(lambda _ : _.index >= initial_ind, dense_prices[asset_name])
 
     for candle in range_selector:
@@ -501,8 +502,8 @@ class ChainedFeature():
         else:
             return ChainUnitType.mode_open
 
-    def ask_for_image(self):
-        if self.attached_image and self.feature_level <2:
+    def ask_for_image(self, forced=False):
+        if self.attached_image and self.feature_level <2 or forced:
             return self.attached_image
         else:
             return ""

@@ -115,7 +115,7 @@ for time_delta in delta_timer:
         skip_next = False
         continue
 
-    fpsClock.tick(30)
+    fpsClock.tick(35)
     display_surface.fill(white)
 
     if paused:
