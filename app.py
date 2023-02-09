@@ -1,3 +1,16 @@
+import config
+import sys
+
+SCREEN_X_0 = 3400
+SCREEN_Y_0 = 0
+slow_rnner_flag = False
+if len(sys.argv) >1:
+    slow_rnner_flag = int(sys.argv[1])
+    config.__dict__["W"] = 1920
+    config.__dict__["H"] = 1080
+    config.__dict__["VISUAL_PART"] = 140
+    SCREEN_Y_0 = 1440
+
 from rendering_backend import backend_switch
 backend = backend_switch().get_backend_ref()
 
@@ -5,15 +18,19 @@ from time_utils import global_timer, Counter, Progression
 
 from feature_chain_mode import ChainedProcessor
 
-from config import STOCKS_DATA, W, H, BPM, CYRILLIC_FONT
+from config import STOCKS_DATA, W, H, BPM, CYRILLIC_FONT, HAPTIC_CORRECT_CMD, HAPTIC_ERROR_CMD
+import subprocess
 
 from colors import white
 import colors
+from text_morfer import textMorfer
+
 import time
 import random
 import pyautogui
 
 from ui_elements import UpperLayout
+
 
 backend.api().init()
 display_surface = backend.api().display.set_mode((W, H))
@@ -60,10 +77,16 @@ upper_stats = UpperLayout(display_surface)
 new_line_counter = Counter(upper_stats)
 pause_counter = Counter(bpm = 1/3)
 screenshot_timer = Counter(bpm = 1)
-quadra_timer = Counter(bpm = 12)
+quadra_timer = Counter(bpm = 10)
+morfer_timer = Counter(bpm = 15)
+timer_1m = Counter(bpm = 1)
+haptic_timer = Counter(bpm = 15)
+timer_dropped = False
+
+tokens_1m = []
+tokens_key = backend.api().K_k
 
 game = ChainedProcessor(display_surface, upper_stats, "hanzi chineese", STOCKS_DATA, (60*1000)/BPM)
-
 
 progression = Progression(new_line_counter,
                           upper_stats)
@@ -74,6 +97,8 @@ font = backend.api().font.Font(CYRILLIC_FONT, 60, bold = True)
 backend.api().event.set_allowed([backend.api().QUIT, backend.api().KEYDOWN, backend.api().KEYUP])
 backend.api().mouse.set_visible(False)
 fpsClock = backend.api().time.Clock()
+
+morfer = textMorfer()
 
 mode = "STOCKS"
 active_game = game
@@ -88,9 +113,11 @@ minor_font = backend.api().font.Font(minor_font, 30)
 
 upper_stats.active_balance = 100
 
-def place_text(text, x, y, transparent = False, renderer = None, base_col = (80,80,80)):
+def place_text(text, x, y, transparent = False, renderer = None, base_col = (80,80,80), forbid_morf = False):
     if renderer is None:
         renderer = base_font
+    if not forbid_morf:
+        text = morfer.morf_text(text)
     if not transparent:
         text = renderer.render(text, True, base_col, (150,150,151))
     else:
@@ -116,9 +143,29 @@ for time_delta in delta_timer:
         continue
 
     fpsClock.tick(35)
+
+    if morfer_timer.is_tick(time_delta):
+        morfer.update_seed()
+
+    if slow_rnner_flag and not paused:
+        keys = backend.api().key.get_pressed()
+        if not keys[backend.api().K_BACKSPACE]:
+            time_delta = 0
+
     display_surface.fill(white)
 
     if paused:
+
+        timer_expired = timer_1m.is_tick(time_delta)
+
+        if timer_expired and not timer_dropped:
+            timer_dropped = True
+
+        if timer_dropped:
+            if haptic_timer.is_tick(time_delta):
+                if HAPTIC_ERROR_CMD:
+                    subprocess.Popen(["bash", HAPTIC_ERROR_CMD])
+
 
         display_surface.fill(white)
         for i, active_screenshot in enumerate(pause_screenshots):
@@ -163,6 +210,15 @@ for time_delta in delta_timer:
 
         trans_surface.fill((40,0,40))
         trans_surface2.fill((40,0,40))
+
+        if not timer_dropped:
+            backend.api().draw.rect(display_surface,
+                                      interpolate(quadra_col_1, quadra_col_2, timer_1m.get_percent()**2),
+                                      ((W//2 - ((W//2)*(1-timer_1m.get_percent()))),
+                                       H//2 - 40,
+                                       ((W)*(1 - timer_1m.get_percent())),
+                                       80))
+
         backend.api().draw.circle(trans_surface,
                               interpolate(quadra_col_1, quadra_col_2, quadra_timer.get_percent()),
                               (W//2, H//2),
@@ -174,8 +230,17 @@ for time_delta in delta_timer:
 
 
 
+
         display_surface.blit(trans_surface, (0,0))
         display_surface.blit(trans_surface2, (0,0))
+
+        tokens_repr = " ".join(str(i+1)+random.choice("♡♥") for i,_ in enumerate(tokens_1m))
+        place_text(tokens_repr,
+                    W//2,
+                    H//32,
+                    transparent = True,
+                    renderer = font,
+                    base_col = interpolate(quadra_col_1, quadra_col_2, 1-quadra_timer.get_percent()))
 
         if pause_progression:
             total = sum(int(_[:-1]) for _ in pause_progression) - 100*len(pause_progression)
@@ -192,7 +257,8 @@ for time_delta in delta_timer:
                         H//2,
                         transparent = True,
                         renderer = font,
-                        base_col = color)
+                        base_col = color,
+                        forbid_morf = True)
 
 
         if meta:
@@ -233,6 +299,17 @@ for time_delta in delta_timer:
                 streak = 0
                 max_streak = 0
 
+        if keys[tokens_key] and not timer_dropped:
+            if tokens_key == backend.api().K_k:
+                tokens_key = backend.api().K_d
+            else:
+                tokens_key = backend.api().K_k
+            tokens_1m.append("*")
+            if HAPTIC_CORRECT_CMD:
+                subprocess.Popen(["bash", HAPTIC_CORRECT_CMD])
+            if len(tokens_1m)>10:
+                tokens_1m = []
+
         for event in backend.api().event.get():
             if event.type == backend.api().QUIT:
                 backend.api().quit()
@@ -246,10 +323,13 @@ for time_delta in delta_timer:
         active_balance = 100
         upper_stats.active_balance = active_balance
         paused = True
+        timer_1m.drop_elapsed()
+        tokens_1m = []
+        timer_dropped = False
 
 
     if new_line_counter.is_tick(time_delta):
-        pyautogui.moveTo(W//2, H//2)
+        pyautogui.moveTo(SCREEN_X_0//2+W//64, SCREEN_Y_0+H//2)
         next_tick_time, meta, meta_minor = active_game.add_line()
         new_line_counter.modify_bpm(next_tick_time)
 
@@ -257,10 +337,10 @@ for time_delta in delta_timer:
         if not paused:
 
             if len(pause_screenshots) < 15:
-                pause_screenshots.append(screenshot_to_image(pyautogui.screenshot(region=((3400-W)//2, 0, W, H))))
+                pause_screenshots.append(screenshot_to_image(pyautogui.screenshot(region=((SCREEN_X_0-W)//2, SCREEN_Y_0, W, H))))
             else:
                 del pause_screenshots[0]
-                pause_screenshots.append(screenshot_to_image(pyautogui.screenshot(region=((3400-W)//2, 0, W, H))))
+                pause_screenshots.append(screenshot_to_image(pyautogui.screenshot(region=((SCREEN_X_0-W)//2, SCREEN_Y_0, W, H))))
 
 
             skip_next = True
@@ -298,6 +378,9 @@ for time_delta in delta_timer:
     if not resume_game:
         pause_counter.drop_elapsed()
         paused = True
+        timer_1m.drop_elapsed()
+        tokens_1m = []
+        timer_dropped = False
 
     beat_time = progression.synchronize_tick()
 
@@ -307,6 +390,9 @@ for time_delta in delta_timer:
     keys = backend.api().key.get_pressed()
     if keys[backend.api().K_v]:
         paused = True
+        timer_1m.drop_elapsed()
+        tokens_1m = []
+        timer_dropped = False
 
     for event in backend.api().event.get():
 

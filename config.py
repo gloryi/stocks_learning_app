@@ -5,8 +5,9 @@ IMAGES_MAPPING_FILE = os.path.join(os.getcwd(), "dataset_mapping_2500.json")
 CHINESE_FONT = os.path.join(os.getcwd(), "fonts", "simhei.ttf")
 CYRILLIC_FONT = os.path.join(os.getcwd(), "fonts", "Inter_font.ttf")
 META_SCRIPT = os.path.join(os.getcwd(), "trading_affirmations.csv")
+
+META_ACTION = os.path.join(os.getcwd(), "action_affirmations.csv")
 META_DIR = os.path.join(os.getcwd(), "Knowledge")
-META_MINOR = os.path.join(os.getcwd(), "semantical_affirmations.csv")
 META_MINOR_DIR = os.path.join(os.getcwd(), "Affirm")
 IMAGES_MINOR_DIR = os.path.join("/home/gloryi/Pictures/Lightning")
 
@@ -17,9 +18,6 @@ HAPTIC_ERROR_CMD = os.path.join(os.getcwd(), "controller_features", "error.sh")
 HAPTIC_CORRECT_CMD = os.path.join(os.getcwd(), "controller_features", "correct.sh")
 
 BPM = 10
-
-#TEST = False
-#TEST_WIN_CHANCE = -1
 
 W = int(2800)
 H = int(1425)

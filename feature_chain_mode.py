@@ -9,7 +9,7 @@ import os
 import subprocess
 from config import W, H, CYRILLIC_FONT
 from config import CHINESE_FONT, VISUAL_PART
-from config import STAKE_PART, META_DIR, META_MINOR_DIR, IMAGES_MINOR_DIR
+from config import STAKE_PART, META_DIR, META_MINOR_DIR, IMAGES_MINOR_DIR, META_ACTION
 from config import HAPTIC_FEEDBACK_CMD
 from config import HAPTIC_ERROR_CMD, HAPTIC_CORRECT_CMD
 from config import HIGHER_TIMEFRAME_SCALE
@@ -33,7 +33,10 @@ SPLIT_VIEW = True
 ######################################
 
 class ChainedsProducer():
-    def __init__(self, label, csv_path, meta_path = None, minor_meta = None, ui_ref = None, minor_images = None):
+    def __init__(self, label, csv_path,
+                 meta_path = None, minor_meta = None, meta_actions = None,
+                 ui_ref = None, minor_images = None):
+
         self.csv_path = csv_path
         self.label = label
         self.meta_path = meta_path
@@ -42,6 +45,8 @@ class ChainedsProducer():
 
         self.meta_lines = self.extract_meta_dir(self.meta_path) if self.meta_path else []
         self.minor_lines = self.extract_meta_dir(self.minor_meta) if self.minor_meta else []
+        self.action_lines = self.extract_meta(meta_actions) if meta_actions else None
+
         self.chains = self.prepare_data()
         self.active_chain = self.chains.get_active_chain()
         self.ui_ref = ui_ref
@@ -71,7 +76,6 @@ class ChainedsProducer():
         if self.minor_images:
             return random.choice(self.minor_images)
 
-
     def prepare_data(self):
         data_extractor = raw_extracter(self.csv_path)
         chains = []
@@ -100,7 +104,10 @@ class ChainedsProducer():
     def produce_meta_minor(self):
         if self.minor_lines:
             minor_idx = random.randint(0, len(self.minor_lines)-9)
-            return self.minor_lines[minor_idx:minor_idx+8]
+            lines = self.minor_lines[minor_idx:minor_idx+8]
+            if self.action_lines:
+                lines = [random.choice(self.action_lines)] + lines
+            return lines
         return ""
 
 
@@ -683,7 +690,7 @@ class ChainedDrawer():
         #     backend.api().draw.rect(self.display_instance,(180,180,180),
         #                                    (Y1,X1,(dY),(dX)), width = 1)
 
-        def drwSqrZon(zone ,x1,y1,x2,y2, col, strk=0):
+        def drwSqrZon(zone ,x1,y1,x2,y2, col, strk=0,ignore_spit=False):
             try:
                 X = zone[0]
                 Y = zone[1]
@@ -696,7 +703,7 @@ class ChainedDrawer():
                 X1, X2 = min(X1, X2), max(X1, X2)
                 Y1, Y2 = min(Y1, Y2), max(Y1, Y2)
 
-                if SPLIT_VIEW:
+                if SPLIT_VIEW and not ignore_spit:
                     Y1 = split_x(Y1)
                     Y2 = split_x(Y2)
 
@@ -1399,8 +1406,8 @@ class ChainedDrawer():
 
 
         #HIGHER TIMEFRAME IN MINIATURE
-        position_y_low = lambda _ : _*0.25
-        position_y_high = lambda _ : _*0.25 + 0.7
+        position_y_low = lambda _ : _*0.2
+        position_y_high = lambda _ : _*0.2 + 0.75
         place_y_shift = position_y_low
         if SPLIT_VIEW:
             avg_low = (candles[0].l + candles[1].l + candles[-1].l + candles[-2].l)/4
@@ -1436,6 +1443,7 @@ class ChainedDrawer():
             x2 = (high_tf_line[-1][0]+0.5)/(DPTH*(len(high_tf_line)/VISUAL_PART)/0.2) + 0.4
             x3 = (high_tf_line[-1][0]+2)/(DPTH*(len(high_tf_line)/VISUAL_PART)/0.2) + 0.4
 
+
             max_point = max(high_tf_line, key = lambda _ : _[1])
             ymx = place_y_shift(fit_to_zon(max_point[1], minH, maxH))
             xmx = (max_point[0])/(DPTH*(len(high_tf_line)/VISUAL_PART)/0.2) + 0.4
@@ -1446,6 +1454,9 @@ class ChainedDrawer():
 
             len_htf = len(high_tf_line)
             zone_border = int(len_htf*(1-1/HIGHER_TIMEFRAME_SCALE))
+
+            rgb_col = interpolate(colors.col_bt_pressed,colors.col_wicked_lighter, abs(line.variation/40))
+            drwSqrZon(draw_tasks[0][1], 1-ymn,x0,1-ymx,x3,rgb_col, ignore_spit = True)
 
             xz = (high_tf_line[zone_border][0])/(DPTH*(len(high_tf_line)/VISUAL_PART)/0.2) + 0.4
 
@@ -1649,7 +1660,7 @@ class ChainedProcessor():
     def __init__(self, display_instance, ui_ref, data_label, data_path, beat_time = 1):
         self.W = W
         self.H = H
-        self.producer = ChainedsProducer(data_label, data_path, meta_path = META_DIR, minor_meta = META_MINOR_DIR, ui_ref = ui_ref, minor_images = IMAGES_MINOR_DIR)
+        self.producer = ChainedsProducer(data_label, data_path, meta_path = META_DIR, minor_meta = META_MINOR_DIR, meta_actions = META_ACTION, ui_ref = ui_ref, minor_images = IMAGES_MINOR_DIR)
         self.drawer = ChainedDrawer(display_instance, W, H)
         self.control = KeyboardChainModel()
         self.active_line = None
@@ -1695,9 +1706,8 @@ class ChainedProcessor():
                                                self.producer.produce_chain(), self.producer.chains,
                                                self.W, self.H)
 
-            #Blink modifier
             blink_activated = False
-            if random.randint(0,10) > 9:
+            if self.active_entity.uid == self.last_uid and random.randint(0,10) > 9:
                 self.ui_ref.blink = True
                 blink_activated = True
                 self.active_entity.mode = "SHOW"
@@ -1712,7 +1722,7 @@ class ChainedProcessor():
             self.ui_ref.move_image = False
             self.time_elapsed_cummulative = 0
             if blink_activated:
-                self.active_entity.time_estemated /= 4
+                self.active_entity.time_estemated /= 3
             self.active_beat_time = (60*1000)/self.active_entity.time_estemated
 
 

@@ -5,6 +5,8 @@ from itertools import islice
 import random
 import os
 
+from text_morfer import textMorfer
+
 from rendering_backend import backend_switch
 backend = backend_switch().get_backend_ref()
 
@@ -23,8 +25,11 @@ class UpperLayout():
         self.smallest_font2 = backend.api().font.Font(font_file, 15)
         self.smallest_font = backend.api().font.Font(font_file, 20)
         self.small_font = backend.api().font.Font(font_file, 30)
+
+        self.morfer = textMorfer()
         self.font = backend.api().font.Font(font_file, 50)
         self.large_font = backend.api().font.Font(font_file, 60)
+
         self.utf_font = backend.api().font.Font(CHINESE_FONT, 150, bold = True)
         self.combo = 1
         self.tiling = ""
@@ -64,6 +69,7 @@ class UpperLayout():
         self.trans_surface_minor.fill((30,0,30))
 
     def place_text(self, text, x, y, transparent = False, renderer = None, base_col = (80,80,80)):
+        text = self.morfer.morf_text(text)
         if renderer is None:
             renderer = self.font
         if not transparent:
