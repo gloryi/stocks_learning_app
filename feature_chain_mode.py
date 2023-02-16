@@ -13,6 +13,7 @@ from config import STAKE_PART, META_DIR, META_MINOR_DIR, IMAGES_MINOR_DIR, META_
 from config import HAPTIC_FEEDBACK_CMD
 from config import HAPTIC_ERROR_CMD, HAPTIC_CORRECT_CMD
 from config import HIGHER_TIMEFRAME_SCALE
+from config import META_ACTION_STACK
 #from config import TEST, TEST_WIN_CHANCE
 from colors import col_bg_darker, col_wicked_darker
 from colors import col_active_darker, col_bg_lighter
@@ -33,51 +34,60 @@ SPLIT_VIEW = True
 ######################################
 
 class ChainedsProducer():
-    def __init__(self, label, csv_path,
+    def __init__(S, label, csv_path,
                  meta_path = None, minor_meta = None, meta_actions = None,
-                 ui_ref = None, minor_images = None):
+                 meta_actions_stack = None, ui_ref = None, minor_images = None):
 
-        self.csv_path = csv_path
-        self.label = label
-        self.meta_path = meta_path
-        self.minor_meta = minor_meta
-        self.minor_images = self.list_images(minor_images)
+        S.csv_path = csv_path
+        S.label = label
+        S.meta_path = meta_path
+        S.minor_meta = minor_meta
+        S.minor_images = S.list_images(minor_images)
+        S.meta_stack = meta_actions_stack
 
-        self.meta_lines = self.extract_meta_dir(self.meta_path) if self.meta_path else []
-        self.minor_lines = self.extract_meta_dir(self.minor_meta) if self.minor_meta else []
-        self.action_lines = self.extract_meta(meta_actions) if meta_actions else None
+        S.meta_lines = S.extract_meta_dir(S.meta_path) if S.meta_path else []
+        S.minor_lines = S.extract_meta_dir(S.minor_meta) if S.minor_meta else []
+        S.action_lines = S.extract_meta(meta_actions) if meta_actions else None
 
-        self.chains = self.prepare_data()
-        self.active_chain = self.chains.get_active_chain()
-        self.ui_ref = ui_ref
+        S.chains = S.prepare_data()
+        S.active_chain = S.chains.get_active_chain()
+        S.ui_ref = ui_ref
 
-    def extract_meta(self, meta_path):
+    def extract_meta(S, meta_path):
         meta = []
+        header = None
         with open(meta_path, "r") as metafile:
             for line in metafile:
-                meta.append(line[:-1].upper())
+                line = line[:-1]
+                if line in S.meta_stack:
+                    header = line
+                    continue
+                if header:
+                    S.meta_stack[header].append(line)
+
+                meta.append(line.upper())
         return meta
 
-    def extract_meta_dir(self, meta_path):
+    def extract_meta_dir(S, meta_path):
         meta_lines = []
         for _r, _d, _f in os.walk(meta_path):
             for f in _f:
-                meta_lines += self.extract_meta(os.path.join(_r, f))
+                meta_lines += S.extract_meta(os.path.join(_r, f))
         return meta_lines
 
-    def list_images(self, target_directory):
+    def list_images(S, target_directory):
         selected_files = []
         for _r, _d, _f in os.walk(target_directory):
             for f in _f:
                 selected_files.append(os.path.join(_r, f))
         return selected_files
 
-    def produce_minor_image(self):
-        if self.minor_images:
-            return random.choice(self.minor_images)
+    def produce_minor_image(S):
+        if S.minor_images:
+            return random.choice(S.minor_images)
 
-    def prepare_data(self):
-        data_extractor = raw_extracter(self.csv_path)
+    def prepare_data(S):
+        data_extractor = raw_extracter(S.csv_path)
         chains = []
         features = []
         for i, (source, start_line) in enumerate(data_extractor):
@@ -87,26 +97,37 @@ class ChainedsProducer():
                 features = []
         return ChainedModel(chains)
 
-    def produce_chain(self):
-        self.active_chain = self.chains.get_active_chain()
-        return self.active_chain
+    def produce_chain(S):
+        S.active_chain = S.chains.get_active_chain()
+        return S.active_chain
 
-    def produce_next_feature(self):
-        next_features_chain = self.chains.get_next_feature()
+    def produce_next_feature(S):
+        next_features_chain = S.chains.get_next_feature()
 
         return next_features_chain
 
-    def produce_meta(self):
-        if self.meta_lines:
-            return random.choice(self.meta_lines)
+    def produce_meta(S):
+        if S.meta_lines:
+            return random.choice(S.meta_lines)
         return ""
 
-    def produce_meta_minor(self):
-        if self.minor_lines:
-            minor_idx = random.randint(0, len(self.minor_lines)-4)
-            lines = self.minor_lines[minor_idx:minor_idx+3]
-            if self.action_lines:
-                lines = [random.choice(self.action_lines)] + lines
+    def produce_meta_minor(S):
+        if S.minor_lines:
+            minor_idx = random.randint(0, len(S.minor_lines)-4)
+            lines = S.minor_lines[minor_idx:minor_idx+3]
+
+            if any(S.meta_stack.values()):
+                ordered_meta = []
+                for key, stk in S.meta_stack.items():
+                    if stk:
+                        ordered_meta.append(key+" "+random.choice(stk))
+                    else:
+                        ordered_meta.append(key+" " + "---"*5)
+                lines = ordered_meta + lines
+
+            elif S.action_lines:
+                lines = [random.choice(S.action_lines)] + lines
+
             return lines
         return ""
 
@@ -117,7 +138,7 @@ class ChainedsProducer():
 
 
 class ChainedEntity():
-    def __init__(self,
+    def __init__(S,
                  chained_feature,
                  features_chain,
                  chains,
@@ -126,73 +147,73 @@ class ChainedEntity():
 
         global LAST_META
         LAST_META = None
-        self.W, self.H = W, H
+        S.W, S.H = W, H
 
-        self.chained_feature = chained_feature
-        self.features_chain = features_chain
-        self.uid = chained_feature.source + str(chained_feature.start_point)
-        self.iuid = int(features_chain.chain_no)**2
+        S.chained_feature = chained_feature
+        S.features_chain = features_chain
+        S.uid = chained_feature.source + str(chained_feature.start_point)
+        S.iuid = int(features_chain.chain_no)**2
 
-        self.burn_mode = self.chained_feature.is_burning
-        self.locked = False
+        S.burn_mode = S.chained_feature.is_burning
+        S.locked = False
 
-        self.chains = chains
-        self.main_title = self.chained_feature.get_main_title()
+        S.chains = chains
+        S.main_title = S.chained_feature.get_main_title()
 
-        self.correct = False
-        self.error = False
+        S.correct = False
+        S.error = False
 
-        self.mode = "QUESTION"
-        self.blink = False
+        S.mode = "QUESTION"
+        S.blink = False
 
-        self.done = True
-        self.time_perce_reserved = 0.0
+        S.done = True
+        S.time_perce_reserved = 0.0
 
-        min_price, max_price = self.chained_feature.get_question_candles_minmax()
+        min_price, max_price = S.chained_feature.get_question_candles_minmax()
         trading_range = max_price - min_price
         mnp = min_price - trading_range*0.05
         mxp = max_price + trading_range*0.05
-        self.question_pxls_to_price = lambda _y : mnp + (1 - (_y / self.H) ) * (mxp - mnp)
+        S.question_pxls_to_price = lambda _y : mnp + (1 - (_y / S.H) ) * (mxp - mnp)
 
-        self.entry = None
-        self.sl = None
-        self.tp = None
-        self.idle_coursor = None
-        self.idle_x = None
-        self.entry_activated = None
-        self.stop_activated = None
-        self.profit_activated = None
+        S.entry = None
+        S.sl = None
+        S.tp = None
+        S.idle_coursor = None
+        S.idle_x = None
+        S.entry_activated = None
+        S.stop_activated = None
+        S.profit_activated = None
 
-        self.cached_candles = None
-        self.cached_lines = None
-        self.cached_lines_2 = None
+        S.cached_candles = None
+        S.cached_lines = None
+        S.cached_lines_2 = None
 
-        self.variation = 0
-        self.variation_on_rise = True
-        self.static_variation = random.randint(1,3)
-        #self.static_variation = 2
-        #self.floating_offset = random.randint(0,50)
-        self.floating_offset = 0 
-        self.constant_variations = random.sample([_ for _ in range(11)], 3)
-        self.initial_action_done = False
-        self.initial_action = random.choice(["ENTRY", "SL"])
+        S.variation = 0
+        S.variation_on_rise = True
+        S.static_variation = random.randint(1,3)
+        #S.static_variation = 2
+        #S.floating_offset = random.randint(0,50)
+        S.floating_offset = 0 
+        S.constant_variations = random.sample([_ for _ in range(11)], 3)
+        S.initial_action_done = False
+        S.initial_action = random.choice(["ENTRY", "SL"])
 
-        self.palette = random.choice(colors.palettes)
+        S.palette = random.choice(colors.palettes)
 
-        self.question_index = VISUAL_PART
-        self.active_index = 0
-        self.active_index_float = 0
-        self.overflow = 0
-        self.clean_overflow = 0
+        S.question_index = VISUAL_PART
+        S.active_index = 0
+        S.active_index_float = 0
+        S.overflow = 0
+        S.clean_overflow = 0
 
-        if not self.burn_mode:
-            self.time_estemated = self.chained_feature.get_timing() / 3
+        if not S.burn_mode:
+            S.time_estemated = S.chained_feature.get_timing() / 3
         else:
-            self.time_estemated = (self.chained_feature.get_timing() / 4) * 3
+            S.time_estemated = (S.chained_feature.get_timing() / 4) * 3
 
 
 
-    def check_sltp_hit(self):
+    def check_sltp_hit(S):
         global LAST_EVENT
         global NEW_EVENT
         global LAST_META
@@ -207,11 +228,11 @@ class ChainedEntity():
         #         LAST_EVENT = "ERROR"
         #         return False
 
-        if not self.sl or not self.entry or not self.tp:
+        if not S.sl or not S.entry or not S.tp:
             LAST_EVENT = "ERROR"
             return False
 
-        candles = self.chained_feature.get_all_candles()
+        candles = S.chained_feature.get_all_candles()
         triggered = False
         within = lambda price, candle: price <= candle.h and price >= candle.l
 
@@ -225,26 +246,26 @@ class ChainedEntity():
 
         for i, c in enumerate(candles[VISUAL_PART:]):
 
-            if within(self.entry, c):
-                self.entry_activated = True
+            if within(S.entry, c):
+                S.entry_activated = True
                 triggered = True
 
-            if within(self.sl, c):
+            if within(S.sl, c):
                 stop_counted_ex = True
 
-            if triggered and not profit_first and within(self.sl, c):
-                self.stop_activated = True
+            if triggered and not profit_first and within(S.sl, c):
+                S.stop_activated = True
                 stop_counted = True
                 stop_first = True
 
                 LAST_EVENT = "ERROR"
 
 
-            if within(self.tp, c):
+            if within(S.tp, c):
                 profit_counted_ex = True
 
-            if triggered and not stop_first and within(self.tp, c):
-                self.profit_activated = True
+            if triggered and not stop_first and within(S.tp, c):
+                S.profit_activated = True
                 profit_counted = True
                 profit_first = True
 
@@ -253,13 +274,13 @@ class ChainedEntity():
 
         opposite = False
         stp, entr, prof = False, False, False
-        if not self.entry_activated:
+        if not S.entry_activated:
             if stop_counted_ex and not profit_counted_ex:
                 stp, entr, prof = True , False, False
             elif profit_counted_ex and not stop_counted_ex:
                 stp, entr, prof = False, False, True
 
-        elif self.entry_activated:
+        elif S.entry_activated:
             if not profit_counted_ex and not stop_counted_ex:
                 stp, entr, prof = False, True , False
             elif profit_first:
@@ -274,7 +295,7 @@ class ChainedEntity():
                 stp, entr, prof = True , True , True
 
         direction = "LONG"
-        if self.sl > self.entry:
+        if S.sl > S.entry:
             direction = "SHORT"
 
         if not stp and not entr and not prof:
@@ -313,147 +334,147 @@ class ChainedEntity():
 
         return False
 
-    def register_answers(self):
-        if self.mode == "QUESTION":
-            if not self.burn_mode:
-                is_solved = self.check_sltp_hit()
-                self.chained_feature.register_progress(is_solved = is_solved)
+    def register_answers(S):
+        if S.mode == "QUESTION":
+            if not S.burn_mode:
+                is_solved = S.check_sltp_hit()
+                S.chained_feature.register_progress(is_solved = is_solved)
 
                 if not is_solved:
-                    self.chained_feature.register_error()
-                    self.features_chain.update_errors(register_new=True)
+                    S.chained_feature.register_error()
+                    S.features_chain.update_errors(register_new=True)
 
-        if self.mode == "QUESTION":
-            self.mode = "SHOW"
-            self.question_index = VISUAL_PART - self.active_index
+        if S.mode == "QUESTION":
+            S.mode = "SHOW"
+            S.question_index = VISUAL_PART - S.active_index
 
-        elif self.mode == "SHOW":
-            self.mode = "DONE"
+        elif S.mode == "SHOW":
+            S.mode = "DONE"
 
         return False
 
-    def match_error(self):
-        if self.locked:
+    def match_error(S):
+        if S.locked:
             return
 
         global LAST_EVENT
         global NEW_EVENT
         LAST_EVENT = "ERROR"
         NEW_EVENT = True
-        self.locked = True
+        S.locked = True
 
-        self.chained_feature.burn_one(positive = False)
+        S.chained_feature.burn_one(positive = False)
 
 
-    def match_correct(self):
-        if self.locked:
+    def match_correct(S):
+        if S.locked:
             return
 
         global LAST_EVENT
         global NEW_EVENT
         LAST_EVENT = "POSITIVE"
         NEW_EVENT = True
-        self.locked = True
+        S.locked = True
 
-        self.chained_feature.burn_one(positive = True)
+        S.chained_feature.burn_one(positive = True)
 
 
-    def tick(self, time_passed, time_limit):
-        self.variate()
+    def tick(S, time_passed, time_limit):
+        S.variate()
         time_prece = time_passed/time_limit
         time_prece += 0.1
         if time_prece >= 1:
             time_prece = 1
         active_position = int(time_prece*STAKE_PART)
-        self.active_index = active_position
-        self.active_index_float = time_prece*STAKE_PART
-        self.calculate_overflow()
-        if self.mode == "SHOW":
-            self.question_index = VISUAL_PART - self.active_index
+        S.active_index = active_position
+        S.active_index_float = time_prece*STAKE_PART
+        S.calculate_overflow()
+        if S.mode == "SHOW":
+            S.question_index = VISUAL_PART - S.active_index
 
-    def calculate_overflow(self):
-        self.overflow = int((self.active_index_float - self.active_index)*4)
-        self.clean_overflow = self.active_index_float - self.active_index
+    def calculate_overflow(S):
+        S.overflow = int((S.active_index_float - S.active_index)*4)
+        S.clean_overflow = S.active_index_float - S.active_index
 
 
-    def check_answer(self, keys):
+    def check_answer(S, keys):
 
         # if TEST and TEST_WIN_CHANCE:
         #     if random.randint(0,10)>TEST_WIN_CHANCE:
-        #         self.match_correct()
+        #         S.match_correct()
         #     else:
-        #         self.match_error()
+        #         S.match_error()
         #     return
 
         if len([_ for _ in keys if _]) > 1:
-            self.match_error()
+            S.match_error()
 
         for i, _ in enumerate(keys):
-            if _ and i == self.chained_feature.burn_key:
-                self.match_correct()
+            if _ and i == S.chained_feature.burn_key:
+                S.match_correct()
                 return
 
-        self.match_error()
+        S.match_error()
 
 
-    def register_keys(self, key_states, time_percent, time_based = False):
-        if not time_based and self.burn_mode:
-            self.check_answer(key_states)
+    def register_keys(S, key_states, time_percent, time_based = False):
+        if not time_based and S.burn_mode:
+            S.check_answer(key_states)
 
         if time_based:
-            self.variate()
+            S.variate()
             time_p = time_percent
 
-            if not self.done:
-                self.time_perce_reserved = time_percent
+            if not S.done:
+                S.time_perce_reserved = time_percent
 
-            if self.done:
-                time_p = (time_p - self.time_perce_reserved)/(1.0 - self.time_perce_reserved)
+            if S.done:
+                time_p = (time_p - S.time_perce_reserved)/(1.0 - S.time_perce_reserved)
 
-    def register_mouse(self, mouse_poses):
-        if self.burn_mode:
+    def register_mouse(S, mouse_poses):
+        if S.burn_mode:
             return
-        if self.mode == "QUESTION":
+        if S.mode == "QUESTION":
             mouse_position = backend.api().mouse.get_pos()
 
             LMB, RMB = 0, 2
 
-            if not self.initial_action_done:
-                if self.initial_action == "ENTRY" and not mouse_poses[LMB]:
+            if not S.initial_action_done:
+                if S.initial_action == "ENTRY" and not mouse_poses[LMB]:
                     return
-                elif self.initial_action == "SL" and not mouse_poses[RMB]:
+                elif S.initial_action == "SL" and not mouse_poses[RMB]:
                     return
                 else:
-                    self.initial_action_done = True
+                    S.initial_action_done = True
 
             if mouse_poses[LMB]:
-                self.entry = self.question_pxls_to_price(mouse_position[1])
+                S.entry = S.question_pxls_to_price(mouse_position[1])
 
             if mouse_poses[RMB]:
-                self.sl = self.question_pxls_to_price(mouse_position[1])
+                S.sl = S.question_pxls_to_price(mouse_position[1])
 
-            if self.entry and self.sl:
-                risk = self.entry - self.sl
+            if S.entry and S.sl:
+                risk = S.entry - S.sl
                 reward = risk * 3
-                self.tp = self.entry + reward
+                S.tp = S.entry + reward
 
-    def register_idle_mouse(self):
-        if self.burn_mode:
+    def register_idle_mouse(S):
+        if S.burn_mode:
             return
-        if self.mode == "QUESTION":
+        if S.mode == "QUESTION":
                 mouse_position = backend.api().mouse.get_pos()
-                self.idle_coursor = self.question_pxls_to_price(mouse_position[1])
-                self.idle_x = mouse_position[0] / W
-        elif not self.blink:
-            self.idle_coursor = self.question_pxls_to_price(int(H/STAKE_PART)*self.active_index_float)
+                S.idle_coursor = S.question_pxls_to_price(mouse_position[1])
+                S.idle_x = mouse_position[0] / W
+        elif not S.blink:
+            S.idle_coursor = S.question_pxls_to_price(int(H/STAKE_PART)*S.active_index_float)
         else:
-            self.idle_coursor = self.question_pxls_to_price(int(H/STAKE_PART)*0)
+            S.idle_coursor = S.question_pxls_to_price(int(H/STAKE_PART)*0)
 
-    def get_sltp(self):
-        return self.entry, self.sl, self.tp
+    def get_sltp(S):
+        return S.entry, S.sl, S.tp
 
 
-    def produce_geometries(self):
+    def produce_geometries(S):
         graphical_objects = []
         set_color = lambda _ : colors.col_active_lighter
         set_bg_color = lambda _ : colors.col_bt_down
@@ -485,109 +506,109 @@ class ChainedEntity():
 
         return graphical_objects
 
-    def produce_candles(self):
-        if self.mode == "QUESTION" or self.blink:
-            if not self.cached_candles:
-                self.cached_candles = self.chained_feature.get_question_candles()[self.floating_offset:]
-            return self.cached_candles
+    def produce_candles(S):
+        if S.mode == "QUESTION" or S.blink:
+            if not S.cached_candles:
+                S.cached_candles = S.chained_feature.get_question_candles()[S.floating_offset:]
+            return S.cached_candles
         else:
-            return self.chained_feature.get_candles_with_offset(self.active_index, VISUAL_PART)[self.floating_offset:]
+            return S.chained_feature.get_candles_with_offset(S.active_index, VISUAL_PART)[S.floating_offset:]
 
-    def produce_lines(self):
-        if self.mode == "QUESTION" or self.blink:
-            if not self.cached_lines:
-                self.cached_lines = self.chained_feature.get_lines_with_offset(0, VISUAL_PART)
-            return self.cached_lines
+    def produce_lines(S):
+        if S.mode == "QUESTION" or S.blink:
+            if not S.cached_lines:
+                S.cached_lines = S.chained_feature.get_lines_with_offset(0, VISUAL_PART)
+            return S.cached_lines
         else:
-            return self.chained_feature.get_lines_with_offset(self.active_index, VISUAL_PART)
+            return S.chained_feature.get_lines_with_offset(S.active_index, VISUAL_PART)
 
-    def produce_high_tf_pattern(self):
-        if not self.cached_lines_2:
-            self.cached_lines_2 = self.chained_feature.get_high_tf_context()
-        return self.cached_lines_2
+    def produce_high_tf_pattern(S):
+        if not S.cached_lines_2:
+            S.cached_lines_2 = S.chained_feature.get_high_tf_context()
+        return S.cached_lines_2
 
 
-    def variate(self):
-        if self.variation_on_rise:
-            self.variation += 1
+    def variate(S):
+        if S.variation_on_rise:
+            S.variation += 1
         else:
-            self.variation -= 1
+            S.variation -= 1
 
-        if self.variation == 0:
-            if self.mode == "QUESTION" or self.blink:
-                avaliable_numbers = [_ for _ in range(11) if _ not in self.constant_variations]
-                if len(self.constant_variations)%2:
-                    self.constant_variations.append(random.choice(avaliable_numbers))
+        if S.variation == 0:
+            if S.mode == "QUESTION" or S.blink:
+                avaliable_numbers = [_ for _ in range(11) if _ not in S.constant_variations]
+                if len(S.constant_variations)%2:
+                    S.constant_variations.append(random.choice(avaliable_numbers))
                 else:
-                    self.constant_variations.pop(0)
+                    S.constant_variations.pop(0)
             else:
-                self.constant_variations = []
+                S.constant_variations = []
 
-        if self.variation > 40:
-            self.variation_on_rise = False
-        elif self.variation < -40:
-            self.variation_on_rise = True
+        if S.variation > 40:
+            S.variation_on_rise = False
+        elif S.variation < -40:
+            S.variation_on_rise = True
 
 ######################################
 ### LINES HANDLER GRAPHICS
 ######################################
 
 class WordGraphical():
-    def __init__(self, text, x, y, color, bg_color = (150,150,150),
+    def __init__(S, text, x, y, color, bg_color = (150,150,150),
                  font = ChainUnitType.font_utf,
                  font_size = None,
                  rect = [], transparent = False):
-        self.rect = rect
-        self.text = text
-        self.x = x
-        self.y = y
-        self.color = color
-        self.bg_color = bg_color
-        self.font = font
-        self.font_size = font_size
-        self.transparent = transparent
+        S.rect = rect
+        S.text = text
+        S.x = x
+        S.y = y
+        S.color = color
+        S.bg_color = bg_color
+        S.font = font
+        S.font_size = font_size
+        S.transparent = transparent
 
 class ChainedDrawer():
-    def __init__(self, display_instance, W, H):
-        self.display_instance = display_instance
-        self.W = W
-        self.H = H
-        self.cyrillic_30 = backend.api().font.Font(CYRILLIC_FONT, 30, bold = True)
-        self.cyrillic_40 = backend.api().font.Font(CYRILLIC_FONT, 40, bold = True)
-        self.cyrillic_60 = backend.api().font.Font(CYRILLIC_FONT, 60, bold = True)
-        self.cyrillic_120 = backend.api().font.Font(CYRILLIC_FONT, 120, bold = True)
+    def __init__(S, display_instance, W, H):
+        S.display_instance = display_instance
+        S.W = W
+        S.H = H
+        S.cyrillic_30 = backend.api().font.Font(CYRILLIC_FONT, 30, bold = True)
+        S.cyrillic_40 = backend.api().font.Font(CYRILLIC_FONT, 40, bold = True)
+        S.cyrillic_60 = backend.api().font.Font(CYRILLIC_FONT, 60, bold = True)
+        S.cyrillic_120 = backend.api().font.Font(CYRILLIC_FONT, 120, bold = True)
 
-        self.utf_30 = backend.api().font.Font(CHINESE_FONT, 30, bold = True)
-        self.utf_40 = backend.api().font.Font(CHINESE_FONT, 40, bold = True)
-        self.utf_60 = backend.api().font.Font(CHINESE_FONT, 60, bold = True)
-        self.utf_120 = backend.api().font.Font(CHINESE_FONT, 120, bold = True)
+        S.utf_30 = backend.api().font.Font(CHINESE_FONT, 30, bold = True)
+        S.utf_40 = backend.api().font.Font(CHINESE_FONT, 40, bold = True)
+        S.utf_60 = backend.api().font.Font(CHINESE_FONT, 60, bold = True)
+        S.utf_120 = backend.api().font.Font(CHINESE_FONT, 120, bold = True)
 
 
-    def pick_font(self, font_type = ChainUnitType.font_utf, size = 40):
+    def pick_font(S, font_type = ChainUnitType.font_utf, size = 40):
         if font_type == ChainUnitType.font_utf:
             if not size:
-                return self.utf_30
+                return S.utf_30
             elif size <= 30:
-                return self.utf_30
+                return S.utf_30
             elif size <= 40:
-                return self.utf_40
+                return S.utf_40
             elif size <= 60:
-                return self.utf_60
+                return S.utf_60
             else:
-                return self.utf_120
+                return S.utf_120
         else:
             if not size:
-                return self.cyrillic_30
+                return S.cyrillic_30
             elif size <= 30:
-                return self.cyrillic_30
+                return S.cyrillic_30
             elif size <= 40:
-                return self.cyrillic_40
+                return S.cyrillic_40
             elif size <= 60:
-                return self.cyrillic_60
+                return S.cyrillic_60
             else:
-                return self.cyrillic_120
+                return S.cyrillic_120
 
-    def draw_line(self, line):
+    def draw_line(S, line):
 
         if not line.burn_mode:
             return
@@ -596,7 +617,7 @@ class ChainedDrawer():
         color = (128,128,128)
         for geometry in geometries:
             message = geometry.text
-            font = self.pick_font(geometry.font, geometry.font_size)
+            font = S.pick_font(geometry.font, geometry.font_size)
 
             if not geometry.transparent:
                 text = font.render(message, True, geometry.color, geometry.bg_color)
@@ -609,14 +630,14 @@ class ChainedDrawer():
             if geometry.rect:
 
                 x, y, w, h = geometry.rect
-                backend.api().draw.rect(self.display_instance,
+                backend.api().draw.rect(S.display_instance,
                                   (50,50,50),
                                   (x,y,w,h),
                                    width = 2)
 
-            self.display_instance.blit(text, textRect)
+            S.display_instance.blit(text, textRect)
 
-    def display_keys(self, keys, line):
+    def display_keys(S, keys, line):
 
         if not line.burn_mode:
             return
@@ -638,11 +659,11 @@ class ChainedDrawer():
             else:
                 color = (0,150,100)
 
-            backend.api().draw.rect(self.display_instance,
+            backend.api().draw.rect(S.display_instance,
                                   color,
                                   (x1, y1, options_w, options_h), border_radius=15)
 
-    def minMaxOfZon(self, candleSeq):
+    def minMaxOfZon(S, candleSeq):
         if candleSeq:
             minP = min(candleSeq, key = lambda _ : _.l).l
             maxP = max(candleSeq, key = lambda _ : _.h).h
@@ -650,7 +671,7 @@ class ChainedDrawer():
         else:
             return 0, 1
 
-    def generateOCHLPicture(self, line):
+    def generateOCHLPicture(S, line):
 
         last_color = None
 
@@ -664,7 +685,7 @@ class ChainedDrawer():
         def drawCircleSimple(x1,y1,r, col = (125,125,125)):
             if SPLIT_VIEW:
                 x1 = split_x(x1)
-            backend.api().draw.circle(self.display_instance,col, (x1,y1),r)
+            backend.api().draw.circle(S.display_instance,col, (x1,y1),r)
 
         def drwLineSimple(X1, Y1, X2, Y2, ignore_spit=False):
 
@@ -676,7 +697,7 @@ class ChainedDrawer():
             if SPLIT_VIEW and reversed and not ignore_spit:
                 return
 
-            backend.api().draw.line(self.display_instance,(180,180,180),(X1,Y1),(X2,Y2),1)
+            backend.api().draw.line(S.display_instance,(180,180,180),(X1,Y1),(X2,Y2),1)
 
         # def drwZonBrdr(zone):
         #     X1 = zone[0]
@@ -687,7 +708,7 @@ class ChainedDrawer():
         #     Y1, Y2 = min(Y1, Y2), max(Y1, Y2)
         #     dX = X2 - X1
         #     dY = Y2 - Y1
-        #     backend.api().draw.rect(self.display_instance,(180,180,180),
+        #     backend.api().draw.rect(S.display_instance,(180,180,180),
         #                                    (Y1,X1,(dY),(dX)), width = 1)
 
         def drwSqrZon(zone ,x1,y1,x2,y2, col, strk=0,ignore_spit=False):
@@ -713,11 +734,11 @@ class ChainedDrawer():
 
                 clip_color = lambda _ : 0 if _ <=0 else 255 if _ >=255 else int(_)
                 lighter_col = [clip_color(col[0]*0.6), clip_color(col[1]*0.6), clip_color(col[2]*0.6)]
-                backend.api().draw.line(self.display_instance,lighter_col,(Y1,X1),(Y1,X2),2)
-                backend.api().draw.line(self.display_instance,lighter_col,(Y1,X2),(Y2,X2),2)
-                backend.api().draw.line(self.display_instance,lighter_col,(Y2,X2),(Y2,X1),2)
-                backend.api().draw.line(self.display_instance,lighter_col,(Y2,X1),(Y1,X1),2)
-                backend.api().draw.rect(self.display_instance,col,
+                backend.api().draw.line(S.display_instance,lighter_col,(Y1,X1),(Y1,X2),2)
+                backend.api().draw.line(S.display_instance,lighter_col,(Y1,X2),(Y2,X2),2)
+                backend.api().draw.line(S.display_instance,lighter_col,(Y2,X2),(Y2,X1),2)
+                backend.api().draw.line(S.display_instance,lighter_col,(Y2,X1),(Y1,X1),2)
+                backend.api().draw.rect(S.display_instance,col,
                                                (Y1,X1,(Y2-Y1),(X2-X1)), width = strk)
             except Exception as e:
                 print(e)
@@ -736,7 +757,7 @@ class ChainedDrawer():
                     return
                     Y1 = split_x(Y1)
 
-                backend.api().draw.circle(self.display_instance,col,
+                backend.api().draw.circle(S.display_instance,col,
                                                (Y1,X1),r, width = width)
             except Exception as e:
                 pass
@@ -764,8 +785,8 @@ class ChainedDrawer():
                 lighter_col = [clip_color(col[0]*0.6), clip_color(col[1]*0.6), clip_color(col[2]*0.6)]
 
                 if out_line:
-                    backend.api().draw.line(self.display_instance,lighter_col,(Y1,X1),(Y2,X2),strk+1)
-                backend.api().draw.line(self.display_instance,col,(Y1,X1),(Y2,X2),strk)
+                    backend.api().draw.line(S.display_instance,lighter_col,(Y1,X1),(Y2,X2),strk+1)
+                backend.api().draw.line(S.display_instance,col,(Y1,X1),(Y2,X2),strk)
 
             except Exception as e:
                 pass
@@ -1354,11 +1375,11 @@ class ChainedDrawer():
         DPTH = len(candles) + 1
         PIXELS_PER_CANDLE = 10
 
-        W = self.W
-        H = self.H
+        W = S.W
+        H = S.H
 
         firstSquare  = [0,  0, H, W]
-        minV, maxV = self.minMaxOfZon(candles)
+        minV, maxV = S.minMaxOfZon(candles)
 
         additional_squares = find_suitable_squares(candles, minV, maxV)
 
@@ -1563,7 +1584,7 @@ class ChainedDrawer():
             p1 = candles[0].index
             p2 = candles[-1].index
 
-            minV, maxV = self.minMaxOfZon(candles)
+            minV, maxV = S.minMaxOfZon(candles)
 
             special_ones = drawCandles(line, candles, zone, minV, maxV, p1, p2, entry=entry, stop=stop, profit=profit, idle=idle, dpth = DPTH)
 
@@ -1615,207 +1636,209 @@ class ChainedDrawer():
 ######################################
 
 class KeyboardChainModel():
-    def __init__(self):
-        self.up = 'up'
-        self.down = 'down'
-        self.pressed = 'pressed'
-        self.mapping = OrderedDict()
-        self.mapping[backend.api().K_d]         = self.up
-        self.mapping[backend.api().K_f]         = self.up
-        self.mapping[backend.api().K_j]         = self.up
-        self.mapping[backend.api().K_k]         = self.up
+    def __init__(S):
+        S.up = 'up'
+        S.down = 'down'
+        S.pressed = 'pressed'
+        S.mapping = OrderedDict()
+        S.mapping[backend.api().K_d]         = S.up
+        S.mapping[backend.api().K_f]         = S.up
+        S.mapping[backend.api().K_j]         = S.up
+        S.mapping[backend.api().K_k]         = S.up
 
-        self.keys = [self.up for _ in range(6)]
+        S.keys = [S.up for _ in range(6)]
 
-    def process_button(self, current_state, new_state):
-        if current_state == self.up and new_state == self.down:
-            return self.down
-        elif current_state == self.down and new_state == self.down:
-            return self.down
-        elif current_state == self.down and new_state == self.up:
-            return self.pressed
-        elif current_state == self.pressed and new_state == self.up:
-            return self.up
+    def process_button(S, current_state, new_state):
+        if current_state == S.up and new_state == S.down:
+            return S.down
+        elif current_state == S.down and new_state == S.down:
+            return S.down
+        elif current_state == S.down and new_state == S.up:
+            return S.pressed
+        elif current_state == S.pressed and new_state == S.up:
+            return S.up
         else:
-            return self.up
+            return S.up
 
-    def prepare_inputs(self):
-        self.keys = list(self.mapping.values())
+    def prepare_inputs(S):
+        S.keys = list(S.mapping.values())
 
-    def get_inputs(self):
+    def get_inputs(S):
         keys = backend.api().key.get_pressed()
-        for control_key in self.mapping:
+        for control_key in S.mapping:
             if keys[control_key]:
-                self.mapping[control_key] = self.process_button(self.mapping[control_key], self.down)
+                S.mapping[control_key] = S.process_button(S.mapping[control_key], S.down)
             else:
-                self.mapping[control_key] = self.process_button(self.mapping[control_key], self.up)
+                S.mapping[control_key] = S.process_button(S.mapping[control_key], S.up)
 
-    def get_keys(self):
-        self.get_inputs()
-        self.prepare_inputs()
-        return self.keys
+    def get_keys(S):
+        S.get_inputs()
+        S.prepare_inputs()
+        return S.keys
 
 
 class ChainedProcessor():
-    def __init__(self, display_instance, ui_ref, data_label, data_path, beat_time = 1):
-        self.W = W
-        self.H = H
-        self.producer = ChainedsProducer(data_label, data_path, meta_path = META_DIR, minor_meta = META_MINOR_DIR, meta_actions = META_ACTION, ui_ref = ui_ref, minor_images = IMAGES_MINOR_DIR)
-        self.drawer = ChainedDrawer(display_instance, W, H)
-        self.control = KeyboardChainModel()
-        self.active_line = None
-        self.display_instance = display_instance
-        self.active_beat_time = beat_time
-        self.time_elapsed_cummulative = 0
-        self.ui_ref = ui_ref
+    def __init__(S, display_instance, ui_ref, data_label, data_path, beat_time = 1):
+        S.W = W
+        S.H = H
+        S.producer = ChainedsProducer(data_label, data_path, meta_path = META_DIR,
+                                      minor_meta = META_MINOR_DIR, meta_actions = META_ACTION, meta_actions_stack = META_ACTION_STACK,
+                                      ui_ref = ui_ref, minor_images = IMAGES_MINOR_DIR)
+        S.drawer = ChainedDrawer(display_instance, W, H)
+        S.control = KeyboardChainModel()
+        S.active_line = None
+        S.display_instance = display_instance
+        S.active_beat_time = beat_time
+        S.time_elapsed_cummulative = 0
+        S.ui_ref = ui_ref
 
-        self.last_uid = None
-        self.uid_changed = False
-        self.last_positive = False
+        S.last_uid = None
+        S.uid_changed = False
+        S.last_positive = False
 
-        self.active_entity = ChainedEntity(self.producer.produce_next_feature(),
-                                           self.producer.produce_chain(),
-                                           self.producer.chains,
-                                           self.W, self.H)
-        self.ui_ref.set_image(self.active_entity.chained_feature.ask_for_image())
-        self.ui_ref.meta_text = ""
-        self.ui_ref.global_progress = self.producer.chains.get_chains_progression()
-        self.ui_ref.tiling = self.active_entity.main_title
+        S.active_entity = ChainedEntity(S.producer.produce_next_feature(),
+                                           S.producer.produce_chain(),
+                                           S.producer.chains,
+                                           S.W, S.H)
+        S.ui_ref.set_image(S.active_entity.chained_feature.ask_for_image())
+        S.ui_ref.meta_text = ""
+        S.ui_ref.global_progress = S.producer.chains.get_chains_progression()
+        S.ui_ref.tiling = S.active_entity.main_title
 
-    def add_line(self):
+    def add_line(S):
 
         line_swapped = False
 
-        if self.active_entity:
-            self.active_entity.register_answers()
-            self.ui_ref.set_image(self.active_entity.chained_feature.ask_for_image())
-            self.ui_ref.meta_text = ""
-            self.ui_ref.global_progress = self.producer.chains.get_chains_progression()
-            self.ui_ref.move_image = False
+        if S.active_entity:
+            S.active_entity.register_answers()
+            S.ui_ref.set_image(S.active_entity.chained_feature.ask_for_image())
+            S.ui_ref.meta_text = ""
+            S.ui_ref.global_progress = S.producer.chains.get_chains_progression()
+            S.ui_ref.move_image = False
 
-        if self.active_entity.mode == "SHOW":
-            self.time_elapsed_cummulative = 0
-            self.ui_ref.move_image = True
+        if S.active_entity.mode == "SHOW":
+            S.time_elapsed_cummulative = 0
+            S.ui_ref.move_image = True
             if LAST_META:
-                self.ui_ref.meta_text = LAST_META
+                S.ui_ref.meta_text = LAST_META
 
-        if self.active_entity.mode == "DONE":
-            self.ui_ref.global_progress = self.producer.chains.get_chains_progression()
+        if S.active_entity.mode == "DONE":
+            S.ui_ref.global_progress = S.producer.chains.get_chains_progression()
 
-            self.active_entity = ChainedEntity(self.producer.produce_next_feature(),
-                                               self.producer.produce_chain(), self.producer.chains,
-                                               self.W, self.H)
+            S.active_entity = ChainedEntity(S.producer.produce_next_feature(),
+                                               S.producer.produce_chain(), S.producer.chains,
+                                               S.W, S.H)
 
             blink_activated = False
-            if self.active_entity.uid == self.last_uid and random.randint(0,10) > 9:
-                self.ui_ref.blink = True
+            if S.active_entity.uid == S.last_uid and random.randint(0,10) > 9:
+                S.ui_ref.blink = True
                 blink_activated = True
-                self.active_entity.mode = "SHOW"
-                self.active_entity.blink = True
+                S.active_entity.mode = "SHOW"
+                S.active_entity.blink = True
             else:
-                self.ui_ref.blink = False
+                S.ui_ref.blink = False
 
-            self.ui_ref.set_image(self.active_entity.chained_feature.ask_for_image(forced = blink_activated))
-            self.ui_ref.set_image("", minor = True)
-            self.ui_ref.tiling = self.active_entity.main_title
-            self.ui_ref.meta_text = ""
-            self.ui_ref.move_image = False
-            self.time_elapsed_cummulative = 0
+            S.ui_ref.set_image(S.active_entity.chained_feature.ask_for_image(forced = blink_activated))
+            S.ui_ref.set_image("", minor = True)
+            S.ui_ref.tiling = S.active_entity.main_title
+            S.ui_ref.meta_text = ""
+            S.ui_ref.move_image = False
+            S.time_elapsed_cummulative = 0
             if blink_activated:
-                self.active_entity.time_estemated /= 3
-            self.active_beat_time = (60*1000)/self.active_entity.time_estemated
+                S.active_entity.time_estemated /= 3
+            S.active_beat_time = (60*1000)/S.active_entity.time_estemated
 
 
-        return self.active_entity.time_estemated, self.producer.produce_meta(), self.producer.produce_meta_minor()
+        return S.active_entity.time_estemated, S.producer.produce_meta(), S.producer.produce_meta_minor()
 
 
-    def redraw(self):
-        self.drawer.draw_line(self.active_entity)
-        self.drawer.generateOCHLPicture(self.active_entity)
+    def redraw(S):
+        S.drawer.draw_line(S.active_entity)
+        S.drawer.generateOCHLPicture(S.active_entity)
 
-    def get_pressed(self, key_states):
+    def get_pressed(S, key_states):
         mark_pressed = lambda _ : True if _ == "pressed" else False
         return [mark_pressed(_) for _ in key_states]
 
-    def get_feedback(self):
+    def get_feedback(S):
         global NEW_EVENT
 
         if LAST_EVENT == "POSITIVE" and NEW_EVENT:
             NEW_EVENT = False
-            self.ui_ref.bg_color = colors.dark_green
+            S.ui_ref.bg_color = colors.dark_green
 
             if random.randint(0,10) > 5 and HAPTIC_CORRECT_CMD:
                 subprocess.Popen(["bash", HAPTIC_CORRECT_CMD])
 
-            if self.last_positive and random.randint(0,10) > 5:
-                rnd_image = self.producer.produce_minor_image()
-                self.ui_ref.set_image(rnd_image, minor = True)
+            if S.last_positive and random.randint(0,10) > 5:
+                rnd_image = S.producer.produce_minor_image()
+                S.ui_ref.set_image(rnd_image, minor = True)
 
-            self.last_positive = True
+            S.last_positive = True
 
-            if not self.active_entity or self.active_entity.uid == self.last_uid:
+            if not S.active_entity or S.active_entity.uid == S.last_uid:
                 return 0
 
-            if self.active_entity and self.active_entity.burn_mode:
+            if S.active_entity and S.active_entity.burn_mode:
                 return 0
 
-            self.last_uid = self.active_entity.uid
-            self.ui_ref.last_positive = True
+            S.last_uid = S.active_entity.uid
+            S.ui_ref.last_positive = True
 
             return 1
 
         elif LAST_EVENT == "ERROR" and NEW_EVENT:
             NEW_EVENT = False
-            self.ui_ref.bg_color = colors.dark_red
-            self.last_positive = False
+            S.ui_ref.bg_color = colors.dark_red
+            S.last_positive = False
 
             if random.randint(0,10) > 5 and HAPTIC_ERROR_CMD:
                 subprocess.Popen(["bash", HAPTIC_ERROR_CMD])
 
-            if not self.active_entity or self.active_entity.uid == self.last_uid:
+            if not S.active_entity or S.active_entity.uid == S.last_uid:
                 return 0
 
-            if self.active_entity and self.active_entity.burn_mode:
+            if S.active_entity and S.active_entity.burn_mode:
                 return 0
 
-            self.last_uid = self.active_entity.uid
-            self.ui_ref.last_positive = False
+            S.last_uid = S.active_entity.uid
+            S.ui_ref.last_positive = False
             return -1
         else:
             return 0
 
-    def process_inputs(self, time_elapsed = 0):
-        key_states = self.control.get_keys()
+    def process_inputs(S, time_elapsed = 0):
+        key_states = S.control.get_keys()
 
-        if self.active_entity:
-            self.drawer.display_keys(key_states, self.active_entity)
+        if S.active_entity:
+            S.drawer.display_keys(key_states, S.active_entity)
 
-        pressed_keys = self.get_pressed(key_states)
+        pressed_keys = S.get_pressed(key_states)
 
-        if self.active_entity and any(pressed_keys):
-            self.active_entity.register_keys(pressed_keys,
-                                             self.time_elapsed_cummulative / self.active_beat_time)
-        elif self.active_entity:
-            self.active_entity.register_keys(pressed_keys,
-                                             self.time_elapsed_cummulative / self.active_beat_time,
+        if S.active_entity and any(pressed_keys):
+            S.active_entity.register_keys(pressed_keys,
+                                             S.time_elapsed_cummulative / S.active_beat_time)
+        elif S.active_entity:
+            S.active_entity.register_keys(pressed_keys,
+                                             S.time_elapsed_cummulative / S.active_beat_time,
                                              time_based = True)
 
         pressed_mouse = backend.api().mouse.get_pressed()
-        if self.active_entity and any(pressed_mouse):
-            self.active_entity.register_mouse(pressed_mouse)
-        elif self.active_entity:
-            self.active_entity.register_idle_mouse()
+        if S.active_entity and any(pressed_mouse):
+            S.active_entity.register_mouse(pressed_mouse)
+        elif S.active_entity:
+            S.active_entity.register_idle_mouse()
 
 
-    def tick(self, beat_time, time_elapsed):
+    def tick(S, beat_time, time_elapsed):
 
-        self.time_elapsed_cummulative += time_elapsed
+        S.time_elapsed_cummulative += time_elapsed
 
-        if self.active_entity:
-            self.active_entity.tick(self.time_elapsed_cummulative, self.active_beat_time)
+        if S.active_entity:
+            S.active_entity.tick(S.time_elapsed_cummulative, S.active_beat_time)
 
-        self.process_inputs(time_elapsed)
-        self.redraw()
+        S.process_inputs(time_elapsed)
+        S.redraw()
 
-        feedback = self.get_feedback()
+        feedback = S.get_feedback()
         return feedback

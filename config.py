@@ -1,4 +1,5 @@
 import os
+from collections import OrderedDict
 STOCKS_DATA = os.path.join(os.getcwd(), "stocks_data.csv")
 PROGRESSION_FILE = os.path.join(os.getcwd(), "stocks_progress.json")
 IMAGES_MAPPING_FILE = os.path.join(os.getcwd(), "dataset_mapping_2500.json")
@@ -7,6 +8,17 @@ CYRILLIC_FONT = os.path.join(os.getcwd(), "fonts", "Inter_font.ttf")
 META_SCRIPT = os.path.join(os.getcwd(), "trading_affirmations.csv")
 
 META_ACTION = os.path.join(os.getcwd(), "action_affirmations.csv")
+META_ACTION_STACK = OrderedDict()
+META_ACTION_STACK["*** 1XBACK ***"] = []
+META_ACTION_STACK["*** 1XKEYS ***"] = []
+META_ACTION_STACK["*** 1XTEXT ***"] = []
+META_ACTION_STACK["*** IBACK ***"] = []
+META_ACTION_STACK["*** IBACKV ***"] = []
+META_ACTION_STACK["*** MU ***"] = []
+META_ACTION_STACK["*** PERM ***"] = []
+META_ACTION_STACK["*** OUT ***"] = []
+META_ACTION_STACK["*** UNORDERED ***"] = []
+
 META_DIR = os.path.join(os.getcwd(), "Knowledge")
 META_MINOR_DIR = os.path.join(os.getcwd(), "Affirm")
 IMAGES_MINOR_DIR = os.path.join("/home/gloryi/Pictures/Lightning")
@@ -20,7 +32,7 @@ HAPTIC_CORRECT_CMD = os.path.join(os.getcwd(), "controller_features", "correct.s
 BPM = 10
 
 TEST = True
-TEST = False
+#TEST = False
 
 W = int(2800)
 H = int(1425)

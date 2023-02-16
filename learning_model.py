@@ -13,50 +13,50 @@ dense_prices = {}
 mid_prices = {}
 
 class simpleCandle():
-    def __init__(self, o, c, h, l, v, index = 0):
-        self.o = o
-        self.c = c
-        self.h = h
-        self.l = l
-        self.v = v
+    def __init__(S, o, c, h, l, v, index = 0):
+        S.o = o
+        S.c = c
+        S.h = h
+        S.l = l
+        S.v = v
 
-        self.vRising = False
-        self.vCount = 0
-        self.index = index
-        self.upper_pierce_line = max(self.o, self.c)
-        self.lower_pierce_line = min(self.o, self.c)
-        self.up_within_p1  = None
-        self.up_within_p2 = None
-        self.down_within_p1 = None
-        self.down_within_p2 = None
-        self.burn_ind = None
-        self.to_offset = None
-        self.to_price = None
-        self.from_price = None
+        S.vRising = False
+        S.vCount = 0
+        S.index = index
+        S.upper_pierce_line = max(S.o, S.c)
+        S.lower_pierce_line = min(S.o, S.c)
+        S.up_within_p1  = None
+        S.up_within_p2 = None
+        S.down_within_p1 = None
+        S.down_within_p2 = None
+        S.burn_ind = None
+        S.to_offset = None
+        S.to_price = None
+        S.from_price = None
 
-        self.green = self.c >= self.o     # green or red
-        self.red = self.c < self.o        #
-        self.is_same_color = False        # same color or not
-        self.overhigh = False             # are overhigh
-        self.overlow = False              # are overlow
-        self.inner = False                # are candle inner
-        self.pierce = False               # are candle pierce
-        self.weak_pierce_prev = False     # are candle weak pierces prev
-        self.weak_pierce_next = False     # are candle weak pierces next
-        self.up_from_within = False       # are candles goes down from within
-        self.down_from_within = False     # are candle goes up from within
-        self.thick_upper = False          # upper wick taller or lower wick
-        self.thick_lower = False          #
+        S.green = S.c >= S.o     # green or red
+        S.red = S.c < S.o        #
+        S.is_same_color = False        # same color or not
+        S.overhigh = False             # are overhigh
+        S.overlow = False              # are overlow
+        S.inner = False                # are candle inner
+        S.pierce = False               # are candle pierce
+        S.weak_pierce_prev = False     # are candle weak pierces prev
+        S.weak_pierce_next = False     # are candle weak pierces next
+        S.up_from_within = False       # are candles goes down from within
+        S.down_from_within = False     # are candle goes up from within
+        S.thick_upper = False          # upper wick taller or lower wick
+        S.thick_lower = False          #
 
-        self.upbreak = False
-        self.downbreak = False
-        self.no_sooner = index
+        S.upbreak = False
+        S.downbreak = False
+        S.no_sooner = index
         
-    def ochl(self):
-        return self.o, self.c, self.h, self.l
+    def ochl(S):
+        return S.o, S.c, S.h, S.l
 
-    def ochlv(self):
-        return self.o, self.c, self.h, self.l, self.v
+    def ochlv(S):
+        return S.o, S.c, S.h, S.l, S.v
 
 def extract_ochlv(filepath):
     O, C, H, L, V = [], [], [], [], []
@@ -159,7 +159,7 @@ class ChainUnitType():
     font_short_utf = "font_short_utf"
 
 class ChainUnit():
-    def __init__(self,
+    def __init__(S,
                  text,
                  type = None,
                  mode = None,
@@ -169,14 +169,14 @@ class ChainUnit():
                  preferred_position = None,
                  font = ChainUnitType.font_utf):
 
-        self.text = text
-        self.type = type
-        self.mode = mode
-        self.position = position
-        self.order_no = order_no
-        self.font = font
-        self.preferred_position = preferred_position
-        self.extra = extra
+        S.text = text
+        S.type = type
+        S.mode = mode
+        S.position = position
+        S.order_no = order_no
+        S.font = font
+        S.preferred_position = preferred_position
+        S.extra = extra
 
 burn_keys = {}
 burn_keys["LONG"] = 0
@@ -185,38 +185,38 @@ burn_keys["SHORT P"] = 2
 burn_keys["SHORT"] = 3
 
 class ChainedFeature():
-    def __init__(self, source, start_point):
+    def __init__(S, source, start_point):
 
-        self.source = source
-        self.start_point = start_point
-        self.candles = self.pre_process_candles()
-        self.dense_candles = self.pre_process_candles(get_dense(source, start_point), only_visual = True)
-        #self.mid_candles = self.pre_process_candles(get_mid(source, start_point), only_visual = True)
-        #for i in range(len(self.mid_candles)):
-            #self.mid_candles[i].index = i
+        S.source = source
+        S.start_point = start_point
+        S.candles = S.pre_process_candles()
+        S.dense_candles = S.pre_process_candles(get_dense(source, start_point), only_visual = True)
+        #S.mid_candles = S.pre_process_candles(get_mid(source, start_point), only_visual = True)
+        #for i in range(len(S.mid_candles)):
+            #S.mid_candles[i].index = i
 
 
-        self.feature_level = 0
+        S.feature_level = 0
 
-        self.is_burning = False
-        self.burn_level = 0
-        self.burn_key = burn_keys["LONG"]
-        self.burn_ind = None
+        S.is_burning = False
+        S.burn_level = 0
+        S.burn_key = burn_keys["LONG"]
+        S.burn_ind = None
 
-        self.set_burn_answer()
+        S.set_burn_answer()
 
-        self.feature_errors = []
-        self.cummulative_error = 0
-        self.decreased = False
-        self.rised = False
-        self.attached_image = "" 
-        self.basic_timing_per_level = {0:45,
+        S.feature_errors = []
+        S.cummulative_error = 0
+        S.decreased = False
+        S.rised = False
+        S.attached_image = "" 
+        S.basic_timing_per_level = {0:45,
                                        1:45,
                                        2:45}
-    def pre_process_candles(self, source = None, only_visual = False):
+    def pre_process_candles(S, source = None, only_visual = False):
 
         if not source:
-            candles_generator = get_candles(self.source, self.start_point)
+            candles_generator = get_candles(S.source, S.start_point)
         else:
             candles_generator = source
 
@@ -308,8 +308,8 @@ class ChainedFeature():
 
         return candles
 
-    def set_burn_answer(self):
-        decision_candle = self.candles[VISUAL_PART-1]
+    def set_burn_answer(S):
+        decision_candle = S.candles[VISUAL_PART-1]
 
         anchor = (decision_candle.c+decision_candle.o)/2
         anchor_i = VISUAL_PART-1
@@ -319,7 +319,7 @@ class ChainedFeature():
         max_high = max(decision_candle.o, decision_candle.c)
         max_high_i = VISUAL_PART-1
         
-        for i, candle in enumerate(self.candles[VISUAL_PART:]):
+        for i, candle in enumerate(S.candles[VISUAL_PART:]):
             if candle.h > max_high:
                 max_high = candle.h
                 max_high_i = i + VISUAL_PART
@@ -332,73 +332,73 @@ class ChainedFeature():
         low_first = min_low_i < max_high_i
 
         if high_range > low_range and min_low > decision_candle.l:
-            self.burn_key = burn_keys["LONG"] 
-            self.candles[VISUAL_PART-1].to_offset = (max_high_i - anchor_i)
-            self.candles[VISUAL_PART-1].to_price = max_high
-            self.candles[VISUAL_PART-1].from_price = self.candles[VISUAL_PART-1].l
-            self.candles[VISUAL_PART-1].burn_flag = "LONG"
-            self.burn_ind = VISUAL_PART-1
+            S.burn_key = burn_keys["LONG"] 
+            S.candles[VISUAL_PART-1].to_offset = (max_high_i - anchor_i)
+            S.candles[VISUAL_PART-1].to_price = max_high
+            S.candles[VISUAL_PART-1].from_price = S.candles[VISUAL_PART-1].l
+            S.candles[VISUAL_PART-1].burn_flag = "LONG"
+            S.burn_ind = VISUAL_PART-1
 
         elif low_range > high_range and max_high < decision_candle.h:
-            self.burn_key = burn_keys["SHORT"]
-            self.candles[VISUAL_PART-1].to_offset = (min_low_i - anchor_i)
-            self.candles[VISUAL_PART-1].from_price = self.candles[VISUAL_PART-1].h
-            self.candles[VISUAL_PART-1].to_price = min_low
-            self.candles[VISUAL_PART-1].burn_flag = "SHORT"
-            self.burn_ind == VISUAL_PART-1
+            S.burn_key = burn_keys["SHORT"]
+            S.candles[VISUAL_PART-1].to_offset = (min_low_i - anchor_i)
+            S.candles[VISUAL_PART-1].from_price = S.candles[VISUAL_PART-1].h
+            S.candles[VISUAL_PART-1].to_price = min_low
+            S.candles[VISUAL_PART-1].burn_flag = "SHORT"
+            S.burn_ind == VISUAL_PART-1
 
         elif low_first:
-            self.burn_key = burn_keys["LONG P"] 
-            self.candles[min_low_i].to_offset = (max_high_i - min_low_i)
-            self.candles[min_low_i].from_price = self.candles[min_low_i].l
-            self.candles[min_low_i].to_price = max_high
-            self.candles[min_low_i].burn_flag = "LONG P"
-            self.burn_ind = min_low_i
+            S.burn_key = burn_keys["LONG P"] 
+            S.candles[min_low_i].to_offset = (max_high_i - min_low_i)
+            S.candles[min_low_i].from_price = S.candles[min_low_i].l
+            S.candles[min_low_i].to_price = max_high
+            S.candles[min_low_i].burn_flag = "LONG P"
+            S.burn_ind = min_low_i
 
         else:
-            self.burn_key = burn_keys["SHORT P"]
-            self.candles[max_high_i].to_offset = (min_low_i - max_high_i)
-            self.candles[max_high_i].from_price = self.candles[max_high_i].h
-            self.candles[max_high_i].to_price = min_low
-            self.candles[max_high_i].burn_flag = "SHORT P"
-            self.burn_ind = max_high_i
+            S.burn_key = burn_keys["SHORT P"]
+            S.candles[max_high_i].to_offset = (min_low_i - max_high_i)
+            S.candles[max_high_i].from_price = S.candles[max_high_i].h
+            S.candles[max_high_i].to_price = min_low
+            S.candles[max_high_i].burn_flag = "SHORT P"
+            S.burn_ind = max_high_i
 
 
-    def get_question_candles(self):
-        return self.candles[:VISUAL_PART]
+    def get_question_candles(S):
+        return S.candles[:VISUAL_PART]
 
-    #def get_mid_candles(self):
-        #return self.mid_candles[:]
+    #def get_mid_candles(S):
+        #return S.mid_candles[:]
 
-    def set_burn_mode(self):
-        self.is_burning = True
-        self.burn_level = 0
+    def set_burn_mode(S):
+        S.is_burning = True
+        S.burn_level = 0
 
-    def burn_one(self, positive = False):
+    def burn_one(S, positive = False):
         if not positive:
-            self.burn_level -= 1
-            if self.burn_level < 0:
-                self.burn_level = 0
+            S.burn_level -= 1
+            if S.burn_level < 0:
+                S.burn_level = 0
         else:
-            self.burn_level += 1
+            S.burn_level += 1
 
-        if self.burn_level == 2:
-            self.burn_level = 0
-            self.is_burning = False
+        if S.burn_level == 2:
+            S.burn_level = 0
+            S.is_burning = False
 
-    def get_question_candles_minmax(self):
-        min_price = min(self.candles[:VISUAL_PART], key = lambda _ : _.l).l
-        max_price = max(self.candles[:VISUAL_PART], key = lambda _ : _.h).h
+    def get_question_candles_minmax(S):
+        min_price = min(S.candles[:VISUAL_PART], key = lambda _ : _.l).l
+        max_price = max(S.candles[:VISUAL_PART], key = lambda _ : _.h).h
         return min_price, max_price
 
-    def get_resulting_candles(self):
-        return self.candles[STAKE_PART:]
+    def get_resulting_candles(S):
+        return S.candles[STAKE_PART:]
 
-    def get_candles_with_offset(self, offset_a, offset_b):
-        return self.candles[offset_a:offset_a+offset_b]
+    def get_candles_with_offset(S, offset_a, offset_b):
+        return S.candles[offset_a:offset_a+offset_b]
 
-    def get_lines_with_offset(self, offset_a, offset_b):
-        selected_candles = self.candles[offset_a:offset_a+offset_b]
+    def get_lines_with_offset(S, offset_a, offset_b):
+        selected_candles = S.candles[offset_a:offset_a+offset_b]
         special_lines = []
         
         high_low_line = []
@@ -461,8 +461,8 @@ class ChainedFeature():
 
         return special_lines
 
-    def get_high_tf_context(self):
-        selected_candles = self.dense_candles 
+    def get_high_tf_context(S):
+        selected_candles = S.dense_candles 
         high_low_line = []
         last_high = False
         for i, candle in enumerate(selected_candles):
@@ -491,258 +491,258 @@ class ChainedFeature():
         return high_low_line
 
 
-    def get_all_candles(self):
-        return self.candles
+    def get_all_candles(S):
+        return S.candles
 
-    def set_mode(self, unit_type):
-        if self.feature_level == 0:
+    def set_mode(S, unit_type):
+        if S.feature_level == 0:
             return ChainUnitType.mode_open
-        elif self.feature_level >= 1 and unit_type == ChainUnitType.type_feature:
+        elif S.feature_level >= 1 and unit_type == ChainUnitType.type_feature:
             return ChainUnitType.mode_question
         else:
             return ChainUnitType.mode_open
 
-    def ask_for_image(self, forced=False):
-        if self.attached_image and self.feature_level <2 or forced:
-            return self.attached_image
+    def ask_for_image(S, forced=False):
+        if S.attached_image and S.feature_level <2 or forced:
+            return S.attached_image
         else:
             return None
 
 
-    def set_extra(self, unit_type):
+    def set_extra(S, unit_type):
         return ChainUnitType.extra_focus
 
-    def get_timing(self):
-        return self.basic_timing_per_level[self.feature_level]
+    def get_timing(S):
+        return S.basic_timing_per_level[S.feature_level]
 
-    def register_error(self):
-        self.feature_errors[0] += 1
-        self.cummulative_error += 1
+    def register_error(S):
+        S.feature_errors[0] += 1
+        S.cummulative_error += 1
 
-    def decrease_errors(self):
-        if self.cummulative_error > 1:
-            self.cummulative_error //= 2
+    def decrease_errors(S):
+        if S.cummulative_error > 1:
+            S.cummulative_error //= 2
         else:
-            self.cummulative_error = 0
+            S.cummulative_error = 0
 
-        if self.feature_errors[0] >1:
-            self.feature_errors[0] //= 2
+        if S.feature_errors[0] >1:
+            S.feature_errors[0] //= 2
         else:
-            self.feature_errors[0] = 0
+            S.feature_errors[0] = 0
 
 
-    def get_main_title(self):
-        return self.source
+    def get_main_title(S):
+        return S.source
 
-    def register_progress(self, is_solved = False):
-        timing = self.basic_timing_per_level[self.feature_level]
-        level = self.feature_level
+    def register_progress(S, is_solved = False):
+        timing = S.basic_timing_per_level[S.feature_level]
+        level = S.feature_level
         if is_solved:
-            self.basic_timing_per_level[self.feature_level] = timing +3 if timing < 80 else 80 
-            self.feature_level = level + 1 if level < 2 else 2 
-            self.rised = True
-            self.decreased = False
+            S.basic_timing_per_level[S.feature_level] = timing +3 if timing < 80 else 80 
+            S.feature_level = level + 1 if level < 2 else 2 
+            S.rised = True
+            S.decreased = False
         else:
-            self.basic_timing_per_level[self.feature_level] = timing -3 if timing > 40 else 40 
-            self.feature_level = level -1 if level > 0 else 0 
-            self.decreased = True
-            self.rised = False
+            S.basic_timing_per_level[S.feature_level] = timing -3 if timing > 40 else 40 
+            S.feature_level = level -1 if level > 0 else 0 
+            S.decreased = True
+            S.rised = False
 
-    def select(self):
-        self.rised = False
-        self.decreased = False
+    def select(S):
+        S.rised = False
+        S.decreased = False
 
-    def deselect(self):
-        self.rised = False
-        self.decreased = False
+    def deselect(S):
+        S.rised = False
+        S.decreased = False
 
-    def get_features_len(self):
-        return len(self.keys)
+    def get_features_len(S):
+        return len(S.keys)
 
-    def __repr__(self):
-        return f"{self.source[-10:]}~{self.start_point} | progress = {self.feature_level} | errors = {self.cummulative_error} | burn = {self.burn_level}"
+    def __repr__(S):
+        return f"{S.source[-10:]}~{S.start_point} | progress = {S.feature_level} | errors = {S.cummulative_error} | burn = {S.burn_level}"
 
 
 class FeaturesChain():
-    def __init__(self, chain_no, features):
-        self.chain_no = chain_no
-        self.features = features
+    def __init__(S, chain_no, features):
+        S.chain_no = chain_no
+        S.features = features
 
-        self.progression_level = 0
-        self.errors_mapping = [[0 for _ in range(10)] for j in range(5)]
-        self.max_error = 0
-        self.cummulative_error = 0
-        self.fresh_errors = 0
-        self.last_review_urge = 0
-        self.active_position = -1
-        self.ascended = False
-        self.again = False
+        S.progression_level = 0
+        S.errors_mapping = [[0 for _ in range(10)] for j in range(5)]
+        S.max_error = 0
+        S.cummulative_error = 0
+        S.fresh_errors = 0
+        S.last_review_urge = 0
+        S.active_position = -1
+        S.ascended = False
+        S.again = False
 
-    def ascend(self):
-        for feature in self.features:
+    def ascend(S):
+        for feature in S.features:
             # feature.progression_level = 4
             feature.feature_level = 2
             feature.deselect()
 
-    def set_errors(self, errors_mapping):
-        self.errors_mapping = errors_mapping
-        for feature, feature_errors in zip(self.features, self.errors_mapping):
+    def set_errors(S, errors_mapping):
+        S.errors_mapping = errors_mapping
+        for feature, feature_errors in zip(S.features, S.errors_mapping):
             feature.feature_errors = feature_errors
             feature.cummulative_error = sum(feature_errors)
-        self.max_error = max([max(feature.feature_errors, default=0) for feature in self.features], default=0)
-        self.cummulative_error = sum(sum(feature.feature_errors) for feature in self.features)
+        S.max_error = max([max(feature.feature_errors, default=0) for feature in S.features], default=0)
+        S.cummulative_error = sum(sum(feature.feature_errors) for feature in S.features)
 
-    def update_errors(self, register_new = False):
+    def update_errors(S, register_new = False):
         if register_new:
-            self.fresh_errors += 1
+            S.fresh_errors += 1
 
-        for error_index, (feature, _) in enumerate(zip(self.features, self.errors_mapping)):
-            self.errors_mapping[error_index] = feature.feature_errors
-        self.max_error = max([max(feature.feature_errors, default = 0) for feature in self.features], default=0)
-        self.cummulative_error = sum(sum(feature.feature_errors) for feature in self.features)
+        for error_index, (feature, _) in enumerate(zip(S.features, S.errors_mapping)):
+            S.errors_mapping[error_index] = feature.feature_errors
+        S.max_error = max([max(feature.feature_errors, default = 0) for feature in S.features], default=0)
+        S.cummulative_error = sum(sum(feature.feature_errors) for feature in S.features)
 
-    def get_worst_features(self, features_no = 1):
-        sorted_by_mistake = sorted(self.features,key = lambda _ : _.cummulative_error, reverse = True)
+    def get_worst_features(S, features_no = 1):
+        sorted_by_mistake = sorted(S.features,key = lambda _ : _.cummulative_error, reverse = True)
         return sorted_by_mistake[:features_no] 
 
-    def initialize_images(self, images_list):
-        #for image, feature in zip(images_list, self.features):
+    def initialize_images(S, images_list):
+        #for image, feature in zip(images_list, S.features):
             #feature.attached_image = image
         for i, feature in enumerate(images_list):
             i2 = (i+1)%len(images_list)
-            if i < len(self.features):
-                self.features[i].attached_image = [images_list[i], images_list[i2]]
+            if i < len(S.features):
+                S.features[i].attached_image = [images_list[i], images_list[i2]]
             else:
                 break
 
-    def check_active_changed(self):
-        if self.active_changed:
-            self.active_changed = False
+    def check_active_changed(S):
+        if S.active_changed:
+            S.active_changed = False
             return True
         return False
 
-    def get_next_feature(self):
-        level = self.features[self.active_position].feature_level
-        is_fallback = self.features[self.active_position].decreased
-        is_up = self.features[self.active_position].rised
+    def get_next_feature(S):
+        level = S.features[S.active_position].feature_level
+        is_fallback = S.features[S.active_position].decreased
+        is_up = S.features[S.active_position].rised
         if level == 0 and is_fallback:
-            return self.features[self.active_position]
+            return S.features[S.active_position]
         if level == 1:
-            return self.features[self.active_position]
+            return S.features[S.active_position]
         if level == 2 and not is_up:
-            return self.features[self.active_position]
+            return S.features[S.active_position]
         
-        self.features[self.active_position].deselect()
-        self.active_position += 1
-        if self.active_position >= len(self.features):
-            self.active_position = 0
-            if self.fresh_errors <= 3:
-                self.progression_level += 1
-            elif self.fresh_errors <= 6:
-                self.again = True
-                self.progression_level = self.progression_level
+        S.features[S.active_position].deselect()
+        S.active_position += 1
+        if S.active_position >= len(S.features):
+            S.active_position = 0
+            if S.fresh_errors <= 3:
+                S.progression_level += 1
+            elif S.fresh_errors <= 6:
+                S.again = True
+                S.progression_level = S.progression_level
             else:
-                self.progression_level -= 1
-                self.again = True
-                if self.progression_level < 0:
-                    self.progression_level = 0
+                S.progression_level -= 1
+                S.again = True
+                if S.progression_level < 0:
+                    S.progression_level = 0
 
-            self.fresh_errors = 0
+            S.fresh_errors = 0
 
             return None
-        self.features[self.active_position].select()
-        return self.features[self.active_position]
+        S.features[S.active_position].select()
+        return S.features[S.active_position]
 
 class ChainedModel():
-    def __init__(self, chains):
-        self.chains = chains
-        self.active_chain = None
-        self.old_limit = 1
-        self.new_limit = 2
-        self.mistakes_trigger = False
-        self.mistakes_chain = []
+    def __init__(S, chains):
+        S.chains = chains
+        S.active_chain = None
+        S.old_limit = 1
+        S.new_limit = 2
+        S.mistakes_trigger = False
+        S.mistakes_chain = []
 
-        self.burning_chain = []
-        self.burning_in_work = []
-        self.burning_size = 5 
-        self.burn_tick = 0
+        S.burning_chain = []
+        S.burning_in_work = []
+        S.burning_size = 5 
+        S.burn_tick = 0
 
-        is_restored = self.restore_results(PROGRESSION_FILE)
+        is_restored = S.restore_results(PROGRESSION_FILE)
 
         if not is_restored:
-            self.active_chain = self.get_active_chain()
-            self.dump_results(PROGRESSION_FILE)
+            S.active_chain = S.get_active_chain()
+            S.dump_results(PROGRESSION_FILE)
         else:
-            self.change_active_chain()
+            S.change_active_chain()
 
-        self.attach_images(IMAGES_MAPPING_FILE)
+        S.attach_images(IMAGES_MAPPING_FILE)
 
-    def resample(self):
+    def resample(S):
 
-        if len(self.mistakes_chain) >= 5:
-            self.mistakes_trigger = True
+        if len(S.mistakes_chain) >= 5:
+            S.mistakes_trigger = True
 
-        for chain in self.chains:
+        for chain in S.chains:
             if chain.progression_level > 0:
 
                 chain.last_review_urge = chain.last_review_urge - 1
 
-        if self.old_limit:
-            self.chains.sort(key = lambda _ : _.progression_level + _.last_review_urge * 0.25)
+        if S.old_limit:
+            S.chains.sort(key = lambda _ : _.progression_level + _.last_review_urge * 0.25)
         else:
-            random.shuffle(self.chains)
-            self.chains.sort(key = lambda _ : _.progression_level)
-            if not self.new_limit:
+            random.shuffle(S.chains)
+            S.chains.sort(key = lambda _ : _.progression_level)
+            if not S.new_limit:
 
-                self.old_limit = 2
-                self.new_limit = 2
-        self.dump_results(PROGRESSION_FILE)
+                S.old_limit = 2
+                S.new_limit = 2
+        S.dump_results(PROGRESSION_FILE)
 
-    def add_mistake_chains(self):
+    def add_mistake_chains(S):
 
-        if not self.active_chain:
+        if not S.active_chain:
             return
 
-        worst_features = self.active_chain.get_worst_features(features_no = 2)
+        worst_features = S.active_chain.get_worst_features(features_no = 2)
 
         for feature in worst_features:
-            if feature.cummulative_error == 0 or feature in self.mistakes_chain:
+            if feature.cummulative_error == 0 or feature in S.mistakes_chain:
                 continue
-            self.mistakes_chain.append(feature)
+            S.mistakes_chain.append(feature)
 
-        self.mistakes_chain.sort(key = lambda _ : _.cummulative_error, reverse = True)
+        S.mistakes_chain.sort(key = lambda _ : _.cummulative_error, reverse = True)
 
-    def change_active_chain(self):
+    def change_active_chain(S):
 
-        self.add_mistake_chains()
+        S.add_mistake_chains()
 
-        self.resample()
+        S.resample()
 
-        if self.mistakes_trigger:
-            self.mistakes_trigger = False
+        if S.mistakes_trigger:
+            S.mistakes_trigger = False
 
-            if len(self.mistakes_chain) > 5:
-                mistakes_to_work, self.mistakes_chain = self.mistakes_chain[:5], self.mistakes_chain[5:]
+            if len(S.mistakes_chain) > 5:
+                mistakes_to_work, S.mistakes_chain = S.mistakes_chain[:5], S.mistakes_chain[5:]
 
                 for mistake in mistakes_to_work:
                     mistake.decrease_errors()
-                self.active_chain =  FeaturesChain(-1, mistakes_to_work)
+                S.active_chain =  FeaturesChain(-1, mistakes_to_work)
                 return
 
-        self.active_chain = self.chains[0]
+        S.active_chain = S.chains[0]
 
-        if self.active_chain.last_review_urge < 0:
-            self.old_limit -= 1
+        if S.active_chain.last_review_urge < 0:
+            S.old_limit -= 1
         else:
-            self.new_limit -= 1
+            S.new_limit -= 1
 
-        self.active_chain.last_review_urge = 0
-        self.active_chain.update_errors()
+        S.active_chain.last_review_urge = 0
+        S.active_chain.update_errors()
 
-    def get_options_list(self, sample):
+    def get_options_list(S, sample):
         options = [sample.text]
         for i in range(5):
-            random_chain = random.choice(random.choice(self.chains).features)
+            random_chain = random.choice(random.choice(S.chains).features)
             preferred_position = sample.preferred_position
             if sample.type == ChainUnitType.type_feature:
                 if preferred_position == "MAIN_FEATURE":
@@ -755,77 +755,77 @@ class ChainedModel():
         random.shuffle(options)
         return options
 
-    def get_next_feature(self):
+    def get_next_feature(S):
 
-        self.burning_in_work = list(filter(lambda _: _.is_burning, self.burning_in_work))
+        S.burning_in_work = list(filter(lambda _: _.is_burning, S.burning_in_work))
 
-        if self.burning_in_work:
+        if S.burning_in_work:
 
-            self.burn_tick += 1
-            self.burn_tick %= 2
-            if self.burn_tick == 0:
-                random.shuffle(self.burning_in_work)
+            S.burn_tick += 1
+            S.burn_tick %= 2
+            if S.burn_tick == 0:
+                random.shuffle(S.burning_in_work)
 
-            return self.burning_in_work[-1]
+            return S.burning_in_work[-1]
         else:
-            self.set_burning_in_work()
+            S.set_burning_in_work()
 
-        if not self.active_chain:
-            self.change_active_chain()
+        if not S.active_chain:
+            S.change_active_chain()
 
-        next_feature = self.active_chain.get_next_feature()
+        next_feature = S.active_chain.get_next_feature()
         if not next_feature:
-            if self.active_chain.again:
-                self.active_chain.again = False
+            if S.active_chain.again:
+                S.active_chain.again = False
             else:
-                self.change_active_chain()
-            next_feature = self.active_chain.get_next_feature()
+                S.change_active_chain()
+            next_feature = S.active_chain.get_next_feature()
 
-        if not next_feature in self.burning_chain:
+        if not next_feature in S.burning_chain:
             if random.randint(0,10)%3 == 0:
-                self.burning_chain.append(next_feature)
+                S.burning_chain.append(next_feature)
 
         return next_feature
 
-    def is_burning(self):
-        return len(self.burning_chain) >= self.burning_size
+    def is_burning(S):
+        return len(S.burning_chain) >= S.burning_size
 
-    def set_burning_in_work(self):
-        if self.is_burning():
-            self.burning_in_work, self.burning_chain = self.burning_chain[:self.burning_size], self.burning_chain[self.burning_size:]
+    def set_burning_in_work(S):
+        if S.is_burning():
+            S.burning_in_work, S.burning_chain = S.burning_chain[:S.burning_size], S.burning_chain[S.burning_size:]
 
-            for feature in self.burning_in_work:
+            for feature in S.burning_in_work:
                 feature.set_burn_mode()
 
-    def dump_results(self, progression_file):
+    def dump_results(S, progression_file):
         if TEST:
             return
 
         backup = {}
-        for chain in self.chains:
+        for chain in S.chains:
             backup[chain.chain_no] = [chain.progression_level, chain.last_review_urge, chain.errors_mapping]
         with open(progression_file, "w") as current_progress:
             json.dump(backup, current_progress, indent=2)
 
-    def attach_images(self, images_file):
+    def attach_images(S, images_file):
         if os.path.exists(images_file):
             images = {}
             with open(images_file) as images_ordered:
                 images = json.load(images_ordered)
             if images:
-                for chain in self.chains:
+                for chain in S.chains:
                     if chain.chain_no in images:
                         chain.initialize_images(images[chain.chain_no])
                     else:
                         print(f"Chain {chain.chain_no} have no image prepared")
 
-    def restore_results(self, progression_file):
+    def restore_results(S, progression_file):
         if os.path.exists(progression_file):
             progress = {}
             with open(progression_file) as saved_prgress:
                 progress = json.load(saved_prgress)
             if progress:
-                for chain in self.chains:
+                for chain in S.chains:
                     chain.progression_level = progress[chain.chain_no][0]
                     chain.last_review_urge = progress[chain.chain_no][1]
                     if chain.progression_level > 0:
@@ -842,12 +842,12 @@ class ChainedModel():
         else:
             return False
 
-    def get_chains_progression(self):
-        minimal_level = min(self.chains, key = lambda _ : _.progression_level).progression_level
-        mastered = len(list(filter(lambda _: _.progression_level > minimal_level, self.chains)))
-        return f"{minimal_level}x {mastered}/{len(self.chains)}"
+    def get_chains_progression(S):
+        minimal_level = min(S.chains, key = lambda _ : _.progression_level).progression_level
+        mastered = len(list(filter(lambda _: _.progression_level > minimal_level, S.chains)))
+        return f"{minimal_level}x {mastered}/{len(S.chains)}"
 
 
-    def get_active_chain(self):
+    def get_active_chain(S):
 
-        return self.active_chain
+        return S.active_chain
