@@ -6,7 +6,7 @@ from config import PROGRESSION_FILE, IMAGES_MAPPING_FILE
 from config import VISUAL_PART, STAKE_PART
 from config import HIGHER_TIMEFRAME_SCALE, MID_TIMEFRAME_SCALE
 from config import GENERATION_TIME_SIZE
-#from config import TEST
+from config import TEST
 
 knwon_prices = {}
 dense_prices = {}
@@ -506,7 +506,7 @@ class ChainedFeature():
         if self.attached_image and self.feature_level <2 or forced:
             return self.attached_image
         else:
-            return ""
+            return None
 
 
     def set_extra(self, unit_type):
@@ -606,8 +606,14 @@ class FeaturesChain():
         return sorted_by_mistake[:features_no] 
 
     def initialize_images(self, images_list):
-        for image, feature in zip(images_list, self.features):
-            feature.attached_image = image
+        #for image, feature in zip(images_list, self.features):
+            #feature.attached_image = image
+        for i, feature in enumerate(images_list):
+            i2 = (i+1)%len(images_list)
+            if i < len(self.features):
+                self.features[i].attached_image = [images_list[i], images_list[i2]]
+            else:
+                break
 
     def check_active_changed(self):
         if self.active_changed:
@@ -792,8 +798,8 @@ class ChainedModel():
                 feature.set_burn_mode()
 
     def dump_results(self, progression_file):
-        #if TEST:
-            #return
+        if TEST:
+            return
 
         backup = {}
         for chain in self.chains:

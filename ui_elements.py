@@ -55,7 +55,10 @@ class UpperLayout():
         self.timer_y = H//2
 
         self.images_cached = {} 
+        self.images_set_cached = {} 
+        
         self.image = None
+        self.images_set = []
         self.image_minor = None
         self.meta_text = ""
         self.last_positive = False
@@ -92,12 +95,51 @@ class UpperLayout():
             self.timer_x = random.randint(W//2-W//4, W//2+W//4)
             self.timer_y = random.randint(H//2-H//4, H//2+H//4)
 
+    def check_cached_image(self, path_to_image):
+        if len(self.images_cached) > 100:
+            self.images_cached = dict(islice(self.images_cached.items(), 50))
+
+        if not path_to_image or not os.path.exists(path_to_image):
+            self.images_cached[path_to_image] = None
+            return
+
+        if path_to_image in self.images_cached:
+            return
+
+        image_converted = backend.api().image.load(path_to_image).convert()
+        #image_converted.set_alpha(200)
+        image_scaled = backend.api().transform.scale(image_converted, (W, H))
+        self.images_cached[path_to_image]  = image_scaled
+
     def set_image(self, path_to_image, minor=False):
         self.co_variate()
+
+        if isinstance(path_to_image, list):
+            if path_to_image == self.images_set_cached:
+                return
+
+            self.images_set = []
+            self.images_set_cached = []
+            self.image = None
+
+            for image_name in path_to_image:
+                self.check_cached_image(image_name)
+                if image_name in self.images_cached and self.images_cached[image_name]:
+                    self.images_set.append(self.images_cached[image_name])
+                else:
+                    self.images_set.append(None)
+            return
+
+        if not path_to_image in self.images_cached:
+            self.check_cached_image(path_to_image)
+
+        self.image = self.images_cached[path_to_image]
 
         if not path_to_image:
             if not minor:
                 self.image = None
+                self.images_set = []
+                self.images_set_cached = []
             else:
                 self.image_minor = None
 
@@ -106,6 +148,8 @@ class UpperLayout():
                 self.images_cached = dict(islice(self.images_cached.items(), 50))
 
             image_converted = backend.api().image.load(path_to_image).convert()
+
+
             image_scaled = backend.api().transform.scale(image_converted, (W, H))
 
             self.images_cached[path_to_image]  = image_scaled
@@ -113,13 +157,12 @@ class UpperLayout():
             if not minor:
                 self.image = self.images_cached[path_to_image]
             else:
-                self.image_minor = self.images_cached[path_to_image]
-
+                self.image_minor = backend.api().transform.flip(self.images_cached[path_to_image], random.choice([True, False]), False)
         else:
             if not minor:
                 self.image = self.images_cached[path_to_image]
             else:
-                self.image_minor = self.images_cached[path_to_image]
+                self.image_minor = backend.api().transform.flip(self.images_cached[path_to_image], random.choice([True, False]), False)
 
 
     def redraw(self):
@@ -130,6 +173,18 @@ class UpperLayout():
         if self.image:
             self.display_instance.blit(self.image, (0, 0))
             self.display_instance.blit(self.trans_surface, (0,0))
+
+        if self.images_set:
+            set_locations = []
+            
+            if len(self.images_set)==2:
+                set_locations.append((int(-1*(W//2)), int(0)))
+                set_locations.append((int(W//2), int(0)))
+
+            for i in range(len(self.images_set)):
+                if i < len(self.images_set) and self.images_set[i]:
+                    self.display_instance.blit(self.images_set[i], set_locations[i])
+
 
         if self.image_minor:
             self.trans_surface_minor.blit(self.image_minor, (0,0))

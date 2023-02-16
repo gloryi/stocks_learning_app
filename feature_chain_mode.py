@@ -103,8 +103,8 @@ class ChainedsProducer():
 
     def produce_meta_minor(self):
         if self.minor_lines:
-            minor_idx = random.randint(0, len(self.minor_lines)-9)
-            lines = self.minor_lines[minor_idx:minor_idx+8]
+            minor_idx = random.randint(0, len(self.minor_lines)-4)
+            lines = self.minor_lines[minor_idx:minor_idx+3]
             if self.action_lines:
                 lines = [random.choice(self.action_lines)] + lines
             return lines
@@ -1410,7 +1410,7 @@ class ChainedDrawer():
         position_y_high = lambda _ : _*0.2 + 0.75
         place_y_shift = position_y_low
         if SPLIT_VIEW:
-            avg_low = (candles[0].l + candles[1].l + candles[-1].l + candles[-2].l)/4
+            avg_low = (candles[-4].l + candles[-3].l + candles[-2].l + candles[-1].l)/4
         else:
             avg_low = (candles[len(candles)//2].l + candles[len(candles)//2+1].l + candles[len(candles)//2-1].l)/3
         if avg_low < (minV+maxV)/2:
