@@ -71,6 +71,10 @@ class UpperLayout():
         S.trans_surface_minor.set_alpha(40)
         S.trans_surface_minor.fill((30,0,30))
 
+        S.quadra_w_perce1 = 0.0
+        S.quadra_w_perce2 = 0.0
+        
+
     def place_text(S, text, x, y, transparent = False, renderer = None, base_col = (80,80,80)):
         text = S.morfer.morf_text(text)
         if renderer is None:
@@ -114,7 +118,9 @@ class UpperLayout():
     def set_image(S, path_to_image, minor=False):
         S.co_variate()
 
-        if isinstance(path_to_image, list):
+        # TWO IMAGES
+        if isinstance(path_to_image, list) and not minor:
+
             if path_to_image == S.images_set_cached:
                 return
 
@@ -130,6 +136,7 @@ class UpperLayout():
                     S.images_set.append(None)
             return
 
+        # SINGLE IMAGE
         if not path_to_image in S.images_cached:
             S.check_cached_image(path_to_image)
 
@@ -184,7 +191,7 @@ class UpperLayout():
             for i in range(len(S.images_set)):
                 if i < len(S.images_set) and S.images_set[i]:
                     S.display_instance.blit(S.images_set[i], set_locations[i])
-
+            S.display_instance.blit(S.trans_surface, (0,0))
 
         if S.image_minor:
             S.trans_surface_minor.blit(S.image_minor, (0,0))
@@ -235,9 +242,18 @@ class UpperLayout():
         else:
             line_color = random.choice([colors.mid_color, colors.col_black, colors.dark_red, colors.dark_green, colors.white])
             #line_color = interpolate(colors.mid_color, colors.col_black, 1.0-S.variation/2)
+
+        max_r = r_factor*min(W-S.timer_x, S.timer_x, H-S.timer_y, S.timer_y)
         backend.api().draw.circle(S.display_instance,
                                   line_color, (S.timer_x, S.timer_y),
-                                  r_factor*min(W-S.timer_x, S.timer_x, H-S.timer_y, S.timer_y)*S.timing_ratio, width=wdth)
+                                  max_r*S.timing_ratio, width=wdth)
+
+        backend.api().draw.circle(S.display_instance,
+                                  line_color, (S.timer_x, S.timer_y),
+                                  max_r*S.quadra_w_perce1, width=1)
+        #backend.api().draw.circle(S.display_instance,
+                                  #line_color, (S.timer_x, S.timer_y),
+                                  #max_r*S.quadra_w_perce2, width=1)
 
         if S.meta_text:
             line_1 = H//2 - H//4

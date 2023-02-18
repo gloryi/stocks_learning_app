@@ -119,6 +119,10 @@ class ChainedsProducer():
             if any(S.meta_stack.values()):
                 ordered_meta = []
                 for key, stk in S.meta_stack.items():
+
+                    if random.randint(0,10)>3:
+                        continue
+
                     if stk:
                         ordered_meta.append(key+" "+random.choice(stk))
                     else:
@@ -1310,9 +1314,9 @@ class ChainedDrawer():
                 col = interpolate(colors.white, col, abs_fill)
 
                 drwLineZon(zone, 1-prm,(0),
-                            1-prm,(volume_rel/10),col, strk = 8, out_line=False, ignore_spit = True)
+                            1-prm,(volume_rel/8),col, strk = 32, out_line=False, ignore_spit = True)
                 drwLineZon(zone, 1-prm,(1),
-                            1-prm,(1-volume_rel/10),col, strk = 8, out_line=False, ignore_spit = True)
+                            1-prm,(1-volume_rel/8),col, strk = 32, out_line=False, ignore_spit = True)
 
 
             special_ones = []
@@ -1358,12 +1362,12 @@ class ChainedDrawer():
                 wd = w2 - w1
 
                 if not max_high_abs - H//8 < 0:
-                    mh = max(max_high_abs - H//8 + H//32, max_high_abs - H//32)
-                    mnh = min(max_high_abs - H//8 + H//32, max_high_abs - H//32)
+                    mh = max(max_high_abs - H//8 - H//16 , max_high_abs - H//32)
+                    mnh = min(max_high_abs - H//8 - H//16 , max_high_abs - H//32)
                     selected_rects.append([mnh, w1+wd*0.35, mh, w1+wd*0.65])
                 if not min_low_abs + H//8 > H:
-                    mh = max(min_low_abs + H//8 - H//32, min_low_abs + H//32)
-                    mnh = min(min_low_abs + H//8 - H//32, min_low_abs + H//32)
+                    mh = max(min_low_abs + H//8 + H//16, min_low_abs + H//32)
+                    mnh = min(min_low_abs + H//8+ H//16 , min_low_abs + H//32)
                     selected_rects.append([mnh, w1+wd*0.35, mh, w1+wd*0.65])
 
             return selected_rects

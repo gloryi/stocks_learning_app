@@ -1,5 +1,7 @@
 import config
 import sys
+import os
+import datetime
 
 SCREEN_X_0 = 3400
 SCREEN_Y_0 = 0
@@ -19,6 +21,8 @@ from time_utils import global_timer, Counter, Progression
 from feature_chain_mode import ChainedProcessor
 
 from config import STOCKS_DATA, W, H, BPM, CYRILLIC_FONT, HAPTIC_CORRECT_CMD, HAPTIC_ERROR_CMD
+from config import REPORTS_FILE
+from config import TEST
 import subprocess
 
 from colors import white
@@ -75,9 +79,12 @@ delta_timer = global_timer()
 upper_stats = UpperLayout(display_surface)
 
 new_line_counter = Counter(upper_stats)
-pause_counter = Counter(bpm = 1/3)
+if TEST:
+    pause_counter = Counter(bpm = 5)
+else:
+    pause_counter = Counter(bpm = 1/3)
 screenshot_timer = Counter(bpm = 1)
-quadra_timer = Counter(bpm = 10)
+quadra_timer = Counter(bpm = 12)
 morfer_timer = Counter(bpm = 15)
 timer_1m = Counter(bpm = 1)
 haptic_timer = Counter(bpm = 15)
@@ -106,10 +113,13 @@ active_stats = upper_stats
 meta = ""
 meta_minor = []
 
-base_font = backend.api().font.match_font("setofont")
-base_font = backend.api().font.Font(base_font, 35)
-minor_font = backend.api().font.match_font("setofont")
-minor_font = backend.api().font.Font(minor_font, 30)
+#base_font = backend.api().font.match_font("setofont")
+#base_font = backend.api().font.Font(base_font, 35)
+#minor_font = backend.api().font.match_font("setofont")
+#minor_font = backend.api().font.Font(minor_font, 30)
+CYRILLIC_FONT = os.path.join(os.getcwd(), "fonts", "NotoSans-SemiBold.ttf")
+base_font = backend.api().font.Font(CYRILLIC_FONT, 35, bold = True)
+minor_font = backend.api().font.Font(CYRILLIC_FONT, 25, bold = True)
 
 upper_stats.active_balance = 100
 
@@ -134,6 +144,17 @@ def screenshot_to_image(pil_image):
     py_image =  py_image.convert()
     image_scaled = backend.api().transform.scale(py_image, (W//3, H//2))
     return image_scaled
+
+def dump_report():
+    with open(REPORTS_FILE, "a") as reportfile:
+        total = sum(int(_[:-1]) for _ in pause_progression) - 100*len(pause_progression)
+        num_errors = sum([1 for _ in pause_progression if int(_[:-1]) <= 100])
+        mark = "S" if num_errors == 0 else "A" if num_errors == 1 else "B" if num_errors == 2 else "C" if num_errors == 3 else "D" if num_errors == 4 else "E"
+        current_progress = pause_progression + ["_" for _ in range(5-len(pause_progression))]
+        now = datetime.datetime.now()
+        timestamp = f"{now.day}.{now.month} {now.hour}:{now.minute}"
+        report_line = timestamp + " " + " ".join(current_progress) + "|" + f" {total}$" + f" | {max_streak-max_fallback} | {mark}"
+        reportfile.write(report_line+"\n")
 
 
 for time_delta in delta_timer:
@@ -266,7 +287,7 @@ for time_delta in delta_timer:
             for i, chunk in enumerate(chunks):
                 place_text(chunk,
                             W//2,
-                            H//2+70 + 30*(i+1),
+                            H//2+70 + 45*(i+1),
                             transparent = True,
                             renderer = None,
                             base_col = interpolate(colors.col_active_lighter,
@@ -291,6 +312,8 @@ for time_delta in delta_timer:
             paused = False
 
             if len(pause_progression) >=5:
+
+
                 pause_progression = []
                 active_count = 0
                 max_fallback = 0
@@ -317,9 +340,41 @@ for time_delta in delta_timer:
                 quit()
         continue
 
+    # MINOR QUADRA
+    if quadra_timer.is_tick(time_delta):
+        if quadra_phase == "INHALE":
+            quadra_phase = "HOLD_IN"
+        elif quadra_phase == "HOLD_IN":
+            quadra_phase = "EXHALE"
+        elif quadra_phase == "EXHALE":
+            quadra_phase = "HOLD_OUT"
+        else:
+            quadra_phase = "INHALE"
+
+    if quadra_phase == "INHALE":
+        quadra_w_perce1 = quadra_timer.get_percent()
+        quadra_w_perce2 = 1.0
+    elif quadra_phase == "HOLD_IN":
+        quadra_w_perce1 = 1.0
+        quadra_w_perce2 = 1 - quadra_timer.get_percent()
+    elif quadra_phase == "EXHALE":
+        quadra_w_perce1 = 1 - quadra_timer.get_percent()
+        quadra_w_perce2 = 0.0
+    else:
+        quadra_w_perce1 = 0.0
+        quadra_w_perce2 = quadra_timer.get_percent()
+
+    upper_stats.quadra_w_perce1 = quadra_w_perce1
+    upper_stats.quadra_w_perce2 = quadra_w_perce2
 
     if pause_counter.is_tick(time_delta):
         pause_progression.append(f"{active_balance}$")
+
+        if len(pause_progression) == 5:
+            dump_report()
+            backend.api().quit()
+            quit()
+
         active_balance = 100
         upper_stats.active_balance = active_balance
         paused = True
@@ -341,7 +396,6 @@ for time_delta in delta_timer:
             else:
                 del pause_screenshots[0]
                 pause_screenshots.append(screenshot_to_image(pyautogui.screenshot(region=((SCREEN_X_0-W)//2, SCREEN_Y_0, W, H))))
-
 
             skip_next = True
 
@@ -383,7 +437,6 @@ for time_delta in delta_timer:
         timer_dropped = False
 
     beat_time = progression.synchronize_tick()
-
 
     backend.api().display.update()
 

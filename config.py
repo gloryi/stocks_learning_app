@@ -1,5 +1,9 @@
 import os
 from collections import OrderedDict
+from epitran.backoff import Backoff
+backoff = Backoff(['eng-Latn'])
+
+
 STOCKS_DATA = os.path.join(os.getcwd(), "stocks_data.csv")
 PROGRESSION_FILE = os.path.join(os.getcwd(), "stocks_progress.json")
 IMAGES_MAPPING_FILE = os.path.join(os.getcwd(), "dataset_mapping_2500.json")
@@ -29,10 +33,12 @@ HAPTIC_FEEDBACK_CMD = os.path.join(os.getcwd(), "controller_features", "example.
 HAPTIC_ERROR_CMD = os.path.join(os.getcwd(), "controller_features", "error.sh")
 HAPTIC_CORRECT_CMD = os.path.join(os.getcwd(), "controller_features", "correct.sh")
 
+REPORTS_FILE = os.path.join(os.getcwd(), "results.csv")
+
 BPM = 10
 
 TEST = True
-#TEST = False
+TEST = False
 
 W = int(2800)
 H = int(1425)

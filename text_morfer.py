@@ -57,6 +57,32 @@ class textMorfer():
         self.seed = time.time()
         random.seed(self.seed)
 
+    def double_letters(self,word):
+        return re.sub(r"(.)\1", r"\1"+u"\u0305", word)
+
+    def vovels(self,word):
+        word = re.sub(r"(.)a", r"\1"+u"\u0302", word)
+        word = re.sub(r"(.)e", r"\1"+u"\u030E", word)
+        return word
+
+
+    def constant_ipa(self,word):
+        contant_dict = {}
+        contant_dict["th"]="ð"
+        contant_dict["sh"]="ʃ"
+        contant_dict["ing"]="ŋ"
+        contant_dict["ё"]="ɵ"
+        for key in contant_dict.keys():
+            if key in word.lower():
+                word = re.sub(key, contant_dict[key], word.lower(), re.IGNORECASE)
+        return word
+
+    def modify_word(self, word):
+        word = constant_ipa(word)
+        word = vovels(word)
+        word = double_letters(word)
+        return wod
+
     def morf_text(self, text):
         # Case morfer
         random.seed(self.seed)
