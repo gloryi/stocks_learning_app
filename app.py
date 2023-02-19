@@ -294,7 +294,12 @@ for time_delta in delta_timer:
                                                    colors.feature_text_col,
                                                    quadra_w_perce1))
         if meta_minor:
+            back_v_found = False
+
             for i, line in enumerate(meta_minor):
+                if "*** IBACKV ***" in line:
+                    upper_stats.back_v = line
+                    back_v_found = True
                 place_text(line,
                             W//2,
                             H//2-500 + 30*(i+1),
@@ -303,6 +308,8 @@ for time_delta in delta_timer:
                             base_col = interpolate(colors.col_active_lighter,
                                                    colors.feature_text_col,
                                                    quadra_w_perce1))
+            if not back_v_found:
+                upper_stats.back_v = ""
 
     if paused:
         backend.api().display.update()

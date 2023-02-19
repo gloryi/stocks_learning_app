@@ -65,7 +65,6 @@ class textMorfer():
         word = re.sub(r"(.)e", r"\1"+u"\u030E", word)
         return word
 
-
     def constant_ipa(self,word):
         contant_dict = {}
         contant_dict["th"]="ð"

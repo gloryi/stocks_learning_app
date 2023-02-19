@@ -11,7 +11,7 @@ CHINESE_FONT = os.path.join(os.getcwd(), "fonts", "simhei.ttf")
 CYRILLIC_FONT = os.path.join(os.getcwd(), "fonts", "Inter_font.ttf")
 META_SCRIPT = os.path.join(os.getcwd(), "trading_affirmations.csv")
 
-META_ACTION = os.path.join(os.getcwd(), "action_affirmations.csv")
+META_ACTION = os.path.join("/home/gloryi/Documents/SpecialFiles", "action_affirmations.csv")
 META_ACTION_STACK = OrderedDict()
 META_ACTION_STACK["*** 1XBACK ***"] = []
 META_ACTION_STACK["*** 1XKEYS ***"] = []
@@ -21,7 +21,6 @@ META_ACTION_STACK["*** IBACKV ***"] = []
 META_ACTION_STACK["*** MU ***"] = []
 META_ACTION_STACK["*** PERM ***"] = []
 META_ACTION_STACK["*** OUT ***"] = []
-META_ACTION_STACK["*** UNORDERED ***"] = []
 
 META_DIR = os.path.join(os.getcwd(), "Knowledge")
 META_MINOR_DIR = os.path.join(os.getcwd(), "Affirm")
@@ -33,7 +32,7 @@ HAPTIC_FEEDBACK_CMD = os.path.join(os.getcwd(), "controller_features", "example.
 HAPTIC_ERROR_CMD = os.path.join(os.getcwd(), "controller_features", "error.sh")
 HAPTIC_CORRECT_CMD = os.path.join(os.getcwd(), "controller_features", "correct.sh")
 
-REPORTS_FILE = os.path.join(os.getcwd(), "results.csv")
+REPORTS_FILE = os.path.join("/home/gloryi/Documents/SpecialFiles", "results.csv")
 
 BPM = 10
 

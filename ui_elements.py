@@ -73,6 +73,7 @@ class UpperLayout():
 
         S.quadra_w_perce1 = 0.0
         S.quadra_w_perce2 = 0.0
+        S.back_v = ""
         
 
     def place_text(S, text, x, y, transparent = False, renderer = None, base_col = (80,80,80)):
@@ -266,6 +267,7 @@ class UpperLayout():
             w_pos_1 =  (W//2)*(1-S.timing_ratio)**2
             w_pos_2 =  W - (W//2)*(1-S.timing_ratio)**2
             w_pos = w_pos_1
+
             if "PAPERCUT" in S.meta_text:
                 w_line = line_1
                 w_pos = w_pos_2
@@ -297,8 +299,11 @@ class UpperLayout():
             else:
                 w_line = line_2
 
+            text_placed = S.meta_text
+            if ("STUBBED" in S.meta_text or "NAILED" in S.meta_text) and S.back_v:
+                text_placed = S.back_v.replace("*** IBACKV ***", "").replace("#","")
 
-            S.place_text(f"{S.meta_text}",
+            S.place_text(f"{text_placed}",
                         w_pos,
                         w_line,
                         transparent = True,

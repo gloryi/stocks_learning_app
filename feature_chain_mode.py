@@ -14,6 +14,7 @@ from config import HAPTIC_FEEDBACK_CMD
 from config import HAPTIC_ERROR_CMD, HAPTIC_CORRECT_CMD
 from config import HIGHER_TIMEFRAME_SCALE
 from config import META_ACTION_STACK
+from config import TEST
 #from config import TEST, TEST_WIN_CHANCE
 from colors import col_bg_darker, col_wicked_darker
 from colors import col_active_darker, col_bg_lighter
@@ -120,7 +121,7 @@ class ChainedsProducer():
                 ordered_meta = []
                 for key, stk in S.meta_stack.items():
 
-                    if random.randint(0,10)>3:
+                    if random.randint(0,10)>3 and not TEST:
                         continue
 
                     if stk:
@@ -1313,10 +1314,13 @@ class ChainedDrawer():
                 abs_fill = abs(volume_bar[1])
                 col = interpolate(colors.white, col, abs_fill)
 
+                part_of_screen = 1/8
+                if random.randint(0,10)<2:
+                    part_of_screen = 1/2
                 drwLineZon(zone, 1-prm,(0),
-                            1-prm,(volume_rel/8),col, strk = 32, out_line=False, ignore_spit = True)
+                            1-prm,(volume_rel*part_of_screen),col, strk = 32, out_line=False, ignore_spit = True)
                 drwLineZon(zone, 1-prm,(1),
-                            1-prm,(1-volume_rel/8),col, strk = 32, out_line=False, ignore_spit = True)
+                            1-prm,(1-volume_rel*part_of_screen),col, strk = 32, out_line=False, ignore_spit = True)
 
 
             special_ones = []
@@ -1400,26 +1404,6 @@ class ChainedDrawer():
 
         DPTH = len(candles)
 
-        drwLineZon(draw_tasks[0][1],1,0.5+(1/64),
-                   0,0.5+(1/64),
-                   colors.col_bt_pressed, strk = 6, ignore_spit = True)
-
-        if line.mode == "QUESTION" and not line.burn_mode and line.idle_x:
-            line_color = colors.col_bt_down
-            strk = 3
-            cross = 2/DPTH
-            if not line.initial_action_done:
-                if line.initial_action == "ENTRY":
-                    line_color = (150,255,150)
-                    strk = 5
-                    cross += 4/DPTH
-                if line.initial_action == "SL":
-                    strk = 5
-                    cross += 4/DPTH
-                    line_color = (255,150,150)
-
-            drwLineZon(draw_tasks[0][1], 1,line.idle_x,0,line.idle_x,line_color, strk = strk, ignore_spit = True)
-            drwLineZon(draw_tasks[0][1], 1-idle_l,line.idle_x-cross,1-idle_l,line.idle_x+cross,line_color, strk = strk, ignore_spit = True)
 
         o1 = candles[0].index
         o2 = candles[-1].index
@@ -1433,6 +1417,8 @@ class ChainedDrawer():
         #HIGHER TIMEFRAME IN MINIATURE
         position_y_low = lambda _ : _*0.2
         position_y_high = lambda _ : _*0.2 + 0.75
+        place_x_shift = lambda _ : (_)/(DPTH*(len(high_tf_line)/VISUAL_PART)/0.2) + 0.4
+
         place_y_shift = position_y_low
         if SPLIT_VIEW:
             avg_low = (candles[-4].l + candles[-3].l + candles[-2].l + candles[-1].l)/4
@@ -1440,13 +1426,22 @@ class ChainedDrawer():
             avg_low = (candles[len(candles)//2].l + candles[len(candles)//2+1].l + candles[len(candles)//2-1].l)/3
         if avg_low < (minV+maxV)/2:
             place_y_shift = position_y_high 
+        
+        high_tf_overlay = False
+        if random.randint(0,10)<2:
+            # x0 = (high_tf_line[0][0])/(DPTH*(len(high_tf_line)/VISUAL_PART)/0.2) + 0.4
+            place_x_shift = lambda _ : _/(DPTH*(len(high_tf_line)/VISUAL_PART))
+            place_y_shift = lambda _ : _
+            high_tf_overlay = True
+
         if True:
 
             if line.static_variation%2==0 and not line.blink:
-                thn_htf_ln = 10
+                thn_htf_ln = 10 if not high_tf_overlay else 30
+                thk_htf_ln = 8 if not high_tf_overlay else 25
             else:
-                thn_htf_ln = 5
-                thk_htf_ln = 4
+                thn_htf_ln = 5 if not high_tf_overlay else 20 
+                thk_htf_ln = 4 if not high_tf_overlay else 15
 
             minH = min(high_tf_line, key = lambda _ : _[1])[1]
             maxH = max(high_tf_line, key = lambda _ : _[1])[1]
@@ -1463,27 +1458,32 @@ class ChainedDrawer():
 
             y1 = place_y_shift(fit_to_zon(high_tf_line[0][1], minH, maxH))
             y2 = place_y_shift(fit_to_zon(high_tf_line[-1][1], minH, maxH))
-            x0 = (high_tf_line[0][0])/(DPTH*(len(high_tf_line)/VISUAL_PART)/0.2) + 0.4
-            x1 = (high_tf_line[0][0]+0.5)/(DPTH*(len(high_tf_line)/VISUAL_PART)/0.2) + 0.4
-            x2 = (high_tf_line[-1][0]+0.5)/(DPTH*(len(high_tf_line)/VISUAL_PART)/0.2) + 0.4
-            x3 = (high_tf_line[-1][0]+2)/(DPTH*(len(high_tf_line)/VISUAL_PART)/0.2) + 0.4
+            # x0 = (high_tf_line[0][0])/(DPTH*(len(high_tf_line)/VISUAL_PART)/0.2) + 0.4
+            # x1 = (high_tf_line[0][0]+0.5)/(DPTH*(len(high_tf_line)/VISUAL_PART)/0.2) + 0.4
+            # x2 = (high_tf_line[-1][0]+0.5)/(DPTH*(len(high_tf_line)/VISUAL_PART)/0.2) + 0.4
+            # x3 = (high_tf_line[-1][0]+2)/(DPTH*(len(high_tf_line)/VISUAL_PART)/0.2) + 0.4
+            x0 = place_x_shift(high_tf_line[0][0])
+            x1 = place_x_shift(high_tf_line[0][0]+0.5)
+            x2 = place_x_shift(high_tf_line[-1][0]+0.5)
+            x3 = place_x_shift(high_tf_line[-1][0]+2)
 
 
             max_point = max(high_tf_line, key = lambda _ : _[1])
             ymx = place_y_shift(fit_to_zon(max_point[1], minH, maxH))
-            xmx = (max_point[0])/(DPTH*(len(high_tf_line)/VISUAL_PART)/0.2) + 0.4
+            xmx = place_x_shift(max_point[0])
 
             min_point = min(high_tf_line, key = lambda _ : _[1])
             ymn = place_y_shift(fit_to_zon(min_point[1], minH, maxH))
-            xmn = (min_point[0])/(DPTH*(len(high_tf_line)/VISUAL_PART)/0.2) + 0.4
+            xmn = place_x_shift(min_point[0])
 
             len_htf = len(high_tf_line)
             zone_border = int(len_htf*(1-1/HIGHER_TIMEFRAME_SCALE))
 
             rgb_col = interpolate(colors.col_bt_pressed,colors.col_wicked_lighter, abs(line.variation/40))
-            drwSqrZon(draw_tasks[0][1], 1-ymn,x0,1-ymx,x3,rgb_col, ignore_spit = True)
+            if not high_tf_overlay:
+                drwSqrZon(draw_tasks[0][1], 1-ymn,x0,1-ymx,x3,rgb_col, ignore_spit = True)
 
-            xz = (high_tf_line[zone_border][0])/(DPTH*(len(high_tf_line)/VISUAL_PART)/0.2) + 0.4
+            xz = place_x_shift(high_tf_line[zone_border][0])
 
             col1 = colors.col_black
             col2 = colors.mid_color
@@ -1520,10 +1520,10 @@ class ChainedDrawer():
             for i,(p1, p2) in enumerate(zip(high_tf_line[:-1], high_tf_line[1:])):
                 y1 = place_y_shift(fit_to_zon(p1[1], minH, maxH))
                 y2 = place_y_shift(fit_to_zon(p2[1], minH, maxH))
-                x0 = (p1[0]-2)/(DPTH*(len(high_tf_line)/VISUAL_PART)/0.2) + 0.4
-                x1 = (p1[0]+0.5)/(DPTH*(len(high_tf_line)/VISUAL_PART)/0.2) + 0.4
-                x2 = (p2[0]+0.5)/(DPTH*(len(high_tf_line)/VISUAL_PART)/0.2) + 0.4
-                x3 = (p2[0]+2)/(DPTH*(len(high_tf_line)/VISUAL_PART)/0.2) + 0.4
+                x0 = place_x_shift(p1[0]-2)
+                x1 = place_x_shift(p1[0]+0.5)
+                x2 = place_x_shift(p2[0]+0.5)
+                x3 = place_x_shift(p2[0]+2)
 
                 col1 = colors.white
                 col2 = colors.col_black
@@ -1542,18 +1542,41 @@ class ChainedDrawer():
                     col2 = colors.feature_bg
 
                 if yH >= y1 and yH <= y2:
-                    drwLineZon(draw_tasks[0][1], 1-yH,x0,1-yH,x3,colors.col_black, strk = 5, out_line=False, ignore_spit = True)
+                    drwLineZon(draw_tasks[0][1], 1-yH,x0,1-yH,x3,colors.col_black, strk = thn_htf_ln, out_line=False, ignore_spit = True)
                 if yL >= y1 and yL <= y2:
-                    drwLineZon(draw_tasks[0][1], 1-yL,x0,1-yL,x3,colors.col_black, strk = 5, out_line=False, ignore_spit = True)
+                    drwLineZon(draw_tasks[0][1], 1-yL,x0,1-yL,x3,colors.col_black, strk = thn_htf_ln, out_line=False, ignore_spit = True)
 
                 if yE and yE >= y1 and yE <= y2:
-                    drwLineZon(draw_tasks[0][1], 1-yE,x0,1-yE,x3,(150,255,150), strk = 4, out_line=False, ignore_spit = True)
+                    drwLineZon(draw_tasks[0][1], 1-yE,x0,1-yE,x3,(150,255,150), strk = thk_htf_ln, out_line=False, ignore_spit = True)
                 if yP and yP >= y1 and yP <= y2:
-                    drwLineZon(draw_tasks[0][1], 1-yP,x0,1-yP,x3,(255,150,255), strk = 4, out_line=False, ignore_spit = True)
+                    drwLineZon(draw_tasks[0][1], 1-yP,x0,1-yP,x3,(255,150,255), strk = thk_htf_ln, out_line=False, ignore_spit = True)
 
                 if not line.static_variation%2==0 or line.blink:
                     rgb_col = interpolate(col1, col2, abs(line.variation/40))
-                    drwLineZon(draw_tasks[0][1], 1-y1,x1,1-y2,x2,rgb_col, strk = 4, out_line=False, ignore_spit = True)
+                    drwLineZon(draw_tasks[0][1], 1-y1,x1,1-y2,x2,rgb_col, strk = thk_htf_ln, out_line=False, ignore_spit = True)
+
+
+        # POINTER
+        drwLineZon(draw_tasks[0][1],1,0.5+(1/64),
+                   0,0.5+(1/64),
+                   colors.col_bt_pressed, strk = 6, ignore_spit = True)
+
+        if line.mode == "QUESTION" and not line.burn_mode and line.idle_x:
+            line_color = colors.col_bt_down
+            strk = 3
+            cross = 2/DPTH
+            if not line.initial_action_done:
+                if line.initial_action == "ENTRY":
+                    line_color = (150,255,150)
+                    strk = 5
+                    cross += 4/DPTH
+                if line.initial_action == "SL":
+                    strk = 5
+                    cross += 4/DPTH
+                    line_color = (255,150,150)
+
+            drwLineZon(draw_tasks[0][1], 1,line.idle_x,0,line.idle_x,line_color, strk = strk, ignore_spit = True)
+            drwLineZon(draw_tasks[0][1], 1-idle_l,line.idle_x-cross,1-idle_l,line.idle_x+cross,line_color, strk = strk, ignore_spit = True)
 
         special_lines = lines if line.mode!="QUESTION" or line.static_variation%3 == 0 else lines[1:]
         lines_stroke = 3 if not line.static_variation%3==0 and not line.blink else 5
