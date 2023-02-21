@@ -7,6 +7,7 @@ from config import VISUAL_PART, STAKE_PART
 from config import HIGHER_TIMEFRAME_SCALE, MID_TIMEFRAME_SCALE
 from config import GENERATION_TIME_SIZE
 from config import TEST
+from config import KEYBOARD_MODE
 
 knwon_prices = {}
 dense_prices = {}
@@ -51,6 +52,8 @@ class simpleCandle():
         S.upbreak = False
         S.downbreak = False
         S.no_sooner = index
+
+        S.label = ""
         
     def ochl(S):
         return S.o, S.c, S.h, S.l
@@ -513,7 +516,10 @@ class ChainedFeature():
         return ChainUnitType.extra_focus
 
     def get_timing(S):
-        return S.basic_timing_per_level[S.feature_level]
+        if not KEYBOARD_MODE:
+            return S.basic_timing_per_level[S.feature_level]
+        else:
+            return S.basic_timing_per_level[S.feature_level]/3
 
     def register_error(S):
         S.feature_errors[0] += 1

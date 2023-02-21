@@ -31,6 +31,8 @@ class UpperLayout():
         S.large_font = backend.api().font.Font(font_file, 60)
 
         S.utf_font = backend.api().font.Font(CHINESE_FONT, 150, bold = True)
+        S.utf_font1 = backend.api().font.Font(CHINESE_FONT, 100, bold = True)
+        S.utf_font2 = backend.api().font.Font(CHINESE_FONT, 50, bold = True)
         S.combo = 1
         S.tiling = ""
         S.tiling_utf = True
@@ -74,6 +76,11 @@ class UpperLayout():
         S.quadra_w_perce1 = 0.0
         S.quadra_w_perce2 = 0.0
         S.back_v = ""
+
+        S.show_mode = False
+        S.tiling_text = ""
+        S.tiling_cooldown = 0
+        S.tiling_var = lambda a,b : a==b
         
 
     def place_text(S, text, x, y, transparent = False, renderer = None, base_col = (80,80,80)):
@@ -91,14 +98,43 @@ class UpperLayout():
     def co_variate(S):
         S.random_variation = random.randint(0,10)
 
-        # if S.random_variation >9:
-        #     S.blink = True
-        # else:
-        #     S.blink = False
+        if S.tiling_cooldown:
+            S.tiling_cooldown -= 1
+        else:
+            S.tiling_cooldown = random.randint(15,30)
+            S.tiling_text = random.choice(["levels", "volume", 
+           "right side", "upper",
+           "lower", "volatility",
+           "flow el.", "nih pattr", "pa pattr",
+           "imb", "htf", "acc/dst", "up/down",
+           "hh ll", "boses","clasc ta",
+           "high/lows", "inner bars", "ob", "swings",
+           "engulfs", "dojis", "image rec",
+           "color/series", "rallies", "probityie", "otboy", "lp",
+            "hairy", "marubozu", "hollow", "spikes",
+            "subm prev", "subm nxt", "high tf yell",
+            "high tf r/g", "overflows",
+            "gaps", "opposites"])
+        
+            S.tiling_text += random.choice([""," FP"])
 
         if S.random_variation > 5:
             S.timer_x = random.randint(W//2-W//4, W//2+W//4)
             S.timer_y = random.randint(H//2-H//4, H//2+H//4)
+
+        S.tiling_var = random.choice([lambda a,b : a==b,
+                                      lambda a,b : a==1,
+                                      lambda a,b : a==2,
+                                      lambda a,b : a==3,
+                                      lambda a,b : b==1,
+                                      lambda a,b : b==2,
+                                      lambda a,b : b==3,
+                                      lambda a,b : a==4-b,
+                                      lambda a,b : b==4-a,
+                                      lambda a,b : a==3-b,
+                                      lambda a,b : b==3-a,
+                                      lambda a,b : a==2-b,
+                                      lambda a,b : b==2-a])
 
     def check_cached_image(S, path_to_image):
         if len(S.images_cached) > 100:
@@ -208,6 +244,23 @@ class UpperLayout():
         elif S.variation < 0:
             S.variation_on_rise = True
 
+        if S.show_mode or S.blink:
+            t_font = S.utf_font2 if not S.blink else S.utf_font1
+            for i,x in enumerate(range(100,W,500)):
+                for j,y in enumerate(range(100,H,500)):
+
+                    if not S.tiling_var(i,j):
+                        continue
+
+                    S.place_text(S.tiling_text + f" {S.tiling_cooldown//5}",
+                                    x,
+                                    y,
+                                    transparent=True,
+                                    renderer = S.utf_font2,
+                                    base_col = (clip_color(225+S.variation*4),
+                                                225-S.variation,
+                                                225+S.random_variation))
+
         line_color = (int(255*(1-S.percent)),int(255*(S.percent)),0)
 
         S.place_text(str(S.combo)+"x",  W//2,
@@ -250,8 +303,8 @@ class UpperLayout():
                                   max_r*S.timing_ratio, width=wdth)
 
         backend.api().draw.circle(S.display_instance,
-                                  line_color, (S.timer_x, S.timer_y),
-                                  max_r*S.quadra_w_perce1, width=1)
+                                  line_color, (W//2, H//2),
+                                  (H//2)*S.quadra_w_perce1, width=1)
         #backend.api().draw.circle(S.display_instance,
                                   #line_color, (S.timer_x, S.timer_y),
                                   #max_r*S.quadra_w_perce2, width=1)

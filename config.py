@@ -34,10 +34,12 @@ HAPTIC_CORRECT_CMD = os.path.join(os.getcwd(), "controller_features", "correct.s
 
 REPORTS_FILE = os.path.join("/home/gloryi/Documents/SpecialFiles", "results.csv")
 
+KEYBOARD_MODE = True
+
 BPM = 10
 
 TEST = True
-TEST = False
+#TEST = False
 
 W = int(2800)
 H = int(1425)

@@ -2,7 +2,7 @@ from utils import raw_extracter
 from learning_model import ChainedFeature, FeaturesChain, ChainedModel, ChainUnit, ChainUnitType
 from collections import OrderedDict
 from math import sqrt
-from itertools import compress, groupby
+from itertools import compress, groupby, product
 import random
 import re
 import os
@@ -15,6 +15,7 @@ from config import HAPTIC_ERROR_CMD, HAPTIC_CORRECT_CMD
 from config import HIGHER_TIMEFRAME_SCALE
 from config import META_ACTION_STACK
 from config import TEST
+from config import KEYBOARD_MODE
 #from config import TEST, TEST_WIN_CHANCE
 from colors import col_bg_darker, col_wicked_darker
 from colors import col_active_darker, col_bg_lighter
@@ -216,7 +217,14 @@ class ChainedEntity():
         else:
             S.time_estemated = (S.chained_feature.get_timing() / 4) * 3
 
-
+        S.random_labels = ["".join(_) for _ in product("abcdefghijklmnopqrstuwxyz", repeat=2)]
+        S.random_labels = random.sample(S.random_labels, VISUAL_PART + STAKE_PART)
+        
+        S.test_idx = random.randint(0, VISUAL_PART)
+        S.letter_idx = ""
+        S.initial_idx = 0
+        S.select_mode = False
+        S.select_position = 0.5
 
     def check_sltp_hit(S):
         global LAST_EVENT
@@ -224,14 +232,6 @@ class ChainedEntity():
         global LAST_META
         LAST_EVENT = "POSITIVE"
         NEW_EVENT = True
-
-        # if TEST and TEST_WIN_CHANCE:
-        #     if random.randint(0,10)>TEST_WIN_CHANCE:
-        #         LAST_EVENT = "POSITIVE"
-        #         return True
-        #     else:
-        #         LAST_EVENT = "ERROR"
-        #         return False
 
         if not S.sl or not S.entry or not S.tp:
             LAST_EVENT = "ERROR"
@@ -404,12 +404,11 @@ class ChainedEntity():
 
     def check_answer(S, keys):
 
-        # if TEST and TEST_WIN_CHANCE:
-        #     if random.randint(0,10)>TEST_WIN_CHANCE:
-        #         S.match_correct()
-        #     else:
-        #         S.match_error()
-        #     return
+        keys = [True if "d" in keys else False,
+                True if "f" in keys else False,
+                True if "j" in keys else False,
+                True if "k" in keys else False]
+
 
         if len([_ for _ in keys if _]) > 1:
             S.match_error()
@@ -421,10 +420,99 @@ class ChainedEntity():
 
         S.match_error()
 
+    def process_canle_keys(S, key_states):
+
+        if any(key_states) and not S.select_mode:
+            key_states = [_ for _ in key_states if _]
+
+            if key_states[0] == "select":
+
+                S.select_mode = True
+
+                if not S.cached_candles or not S.test_idx:
+                    return
+
+                target_candle = S.cached_candles[S.test_idx]
+
+                S.idle_coursor = target_candle.l + (target_candle.h-target_candle.l) * S.select_position
+
+                return
+
+            if not key_states:
+                return
+
+            S.letter_idx += key_states[0]
+
+            #print(S.letter_idx)
+
+            if len(S.letter_idx) > 2:
+                S.letter_idx = S.letter_idx[2]
+
+            if len(S.letter_idx) == 2:
+                try:
+                    S.test_idx = S.random_labels.index(S.letter_idx)
+                except:
+                    S.test_idx = 0
+
+        if any(key_states) and S.select_mode:
+            key_states = [_ for _ in key_states if _]
+
+            if not S.letter_idx:
+                S.select_mode = False
+                return
+
+            if key_states[0] == "select":
+                S.select_mode = False
+                S.letter_idx = ""
+                S.test_idx = -1
+                return
+
+            if not S.cached_candles:
+                return
+
+            if key_states[0] == "h":
+                S.test_idx -= 1
+                S.select_position = 0.5
+            if key_states[0] == "l":
+                S.test_idx += 1
+                S.select_position = 0.5
+
+            if key_states[0] == "j":
+                S.select_position = (0+S.select_position)/2
+            if key_states[0] == "k":
+                S.select_position = (1+S.select_position)/2
+
+            if key_states[0] == "b":
+                S.select_position = 0.5
+            if key_states[0] == "z":
+                S.select_position = (0.5+S.select_position)/2
+
+            target_candle = S.cached_candles[S.test_idx]
+
+            S.idle_coursor = target_candle.l + (target_candle.h-target_candle.l) * S.select_position
+
+            if key_states[0] == "e":
+                S.entry = S.idle_coursor 
+                if S.entry and S.sl:
+                    risk = S.entry - S.sl
+                    reward = risk * 3
+                    S.tp = S.entry + reward
+            elif key_states[0] == "s":
+                S.sl = S.idle_coursor
+                if S.entry and S.sl:
+                    risk = S.entry - S.sl
+                    reward = risk * 3
+                    S.tp = S.entry + reward
+
 
     def register_keys(S, key_states, time_percent, time_based = False):
+        #S.select_candle_keyboard(key_states)
+
         if not time_based and S.burn_mode:
             S.check_answer(key_states)
+        elif S.mode == "QUESTION":
+            S.process_canle_keys(key_states)
+
 
         if time_based:
             S.variate()
@@ -437,6 +525,9 @@ class ChainedEntity():
                 time_p = (time_p - S.time_perce_reserved)/(1.0 - S.time_perce_reserved)
 
     def register_mouse(S, mouse_poses):
+        # IF NOT KEYBOARD MODE
+        return
+
         if S.burn_mode:
             return
         if S.mode == "QUESTION":
@@ -464,6 +555,9 @@ class ChainedEntity():
                 S.tp = S.entry + reward
 
     def register_idle_mouse(S):
+        # IF NOT KEYBOARD MODE
+        return
+
         if S.burn_mode:
             return
         if S.mode == "QUESTION":
@@ -514,10 +608,22 @@ class ChainedEntity():
     def produce_candles(S):
         if S.mode == "QUESTION" or S.blink:
             if not S.cached_candles:
+
                 S.cached_candles = S.chained_feature.get_question_candles()[S.floating_offset:]
+                for i in range(len(S.cached_candles)):
+                    S.cached_candles[i].label = S.random_labels[i]
+
+                S.initial_idx = S.cached_candles[0].index
+
             return S.cached_candles
         else:
-            return S.chained_feature.get_candles_with_offset(S.active_index, VISUAL_PART)[S.floating_offset:]
+            candles = S.chained_feature.get_candles_with_offset(S.active_index, VISUAL_PART)[S.floating_offset:]
+            for i in range(len(candles)):
+                candles[i].label = S.random_labels[i+S.active_index]
+
+            S.initial_idx = candles[0].index - S.active_index
+
+            return candles
 
     def produce_lines(S):
         if S.mode == "QUESTION" or S.blink:
@@ -582,6 +688,10 @@ class ChainedDrawer():
         S.cyrillic_40 = backend.api().font.Font(CYRILLIC_FONT, 40, bold = True)
         S.cyrillic_60 = backend.api().font.Font(CYRILLIC_FONT, 60, bold = True)
         S.cyrillic_120 = backend.api().font.Font(CYRILLIC_FONT, 120, bold = True)
+
+        S.cyrillic_10 = backend.api().font.Font(CYRILLIC_FONT, 10, bold = True)
+        S.cyrillic_20 = backend.api().font.Font(CYRILLIC_FONT, 20, bold = True)
+        S.cyrillic_15 = backend.api().font.Font(CYRILLIC_FONT, 15, bold = True)
 
         S.utf_30 = backend.api().font.Font(CHINESE_FONT, 30, bold = True)
         S.utf_40 = backend.api().font.Font(CHINESE_FONT, 40, bold = True)
@@ -652,6 +762,11 @@ class ChainedDrawer():
         options_w = 150
         options_h = 50
 
+        keys = [True if "d" in keys else False,
+                True if "f" in keys else False,
+                True if "j" in keys else False,
+                True if "k" in keys else False]
+
         for i, (x1, y1) in enumerate(zip(options_x_corners, options_y_corners)):
             key_state = keys[i]
             xc, yc = x1 + options_w / 2, y1 + options_h / 2
@@ -704,17 +819,20 @@ class ChainedDrawer():
 
             backend.api().draw.line(S.display_instance,(180,180,180),(X1,Y1),(X2,Y2),1)
 
-        # def drwZonBrdr(zone):
-        #     X1 = zone[0]
-        #     Y1 = zone[1]
-        #     X2 = zone[2]
-        #     Y2 = zone[3]
-        #     X1, X2 = min(X1, X2), max(X1, X2)
-        #     Y1, Y2 = min(Y1, Y2), max(Y1, Y2)
-        #     dX = X2 - X1
-        #     dY = Y2 - Y1
-        #     backend.api().draw.rect(S.display_instance,(180,180,180),
-        #                                    (Y1,X1,(dY),(dX)), width = 1)
+        def drwZonBrdr(zone, ignore_spit = False):
+            X1 = zone[0]
+            Y1 = zone[1]
+            X2 = zone[2]
+            Y2 = zone[3]
+            X1, X2 = min(X1, X2), max(X1, X2)
+            Y1, Y2 = min(Y1, Y2), max(Y1, Y2)
+            if SPLIT_VIEW and not ignore_spit:
+                Y1 = split_x(Y1)
+                Y2 = split_x(Y2)
+            dX = X2 - X1
+            dY = Y2 - Y1
+            backend.api().draw.rect(S.display_instance,(180,180,180),
+                                           (Y1,X1,(dY),(dX)), width = 1)
 
         def drwSqrZon(zone ,x1,y1,x2,y2, col, strk=0,ignore_spit=False):
             try:
@@ -766,6 +884,19 @@ class ChainedDrawer():
                                                (Y1,X1),r, width = width)
             except Exception as e:
                 pass
+
+        def fitPointZone(zone, x1,y1, ignore_spit = False):
+            X = zone[0]
+            Y = zone[1]
+            dx = zone[2] - X
+            dy = zone[3] - Y
+            X1 = int(X + dx*x1)
+            Y1 = int(Y + dy*y1)
+
+            if SPLIT_VIEW and not ignore_spit:
+                Y1 = split_x(Y1)
+            return X1, Y1
+
 
         def drwLineZon(zone ,x1,y1,x2,y2, col, strk = 1, out_line = True, ignore_spit = False):
             try:
@@ -863,6 +994,20 @@ class ChainedDrawer():
             candleRelative =  (val-mnp)/(mxp-mnp)
             return candleRelative
 
+        def place_text(text, x, y, transparent = True, renderer = None, base_col = (80,80,80)):
+            #text = S.morfer.morf_text(text)
+            if renderer is None:
+                renderer = S.cyrillic_20
+
+            if not transparent:
+                text = renderer.render(text, True, base_col, (150,150,151))
+            else:
+                text = renderer.render(text, True, base_col)
+
+            textRect = text.get_rect()
+            textRect.center = (x, y)
+            S.display_instance.blit(text, textRect)
+
         def drawCandle(zone, candle, minP, maxP, p1, p2,
                        entry = None, stop = None, profit = None, idle = None,
                        last = False, first = False, draw_special = False, predefined_color = False, dpth = None):
@@ -876,6 +1021,11 @@ class ChainedDrawer():
             special_priority = None
 
             i = candle.index - p1
+
+            #if len(line.constant_variations)%2 == i%2 and not last and line.mode == "QUESTION":
+                #if random.randint(0,10)>5:
+                    #return None, None, None, None
+
             width = 0
             if draw_special:
                 width = 2
@@ -885,6 +1035,7 @@ class ChainedDrawer():
             # w2 = 0.4
             # w3 = 0.5
             # c0 = i+w0
+            #if len(line.constant_variations)%2 == i%2 and not last and line.mode == "QUESTION":
             w0 = 0.5
             w1 = 0.2
             w2 = 0.35
@@ -907,9 +1058,8 @@ class ChainedDrawer():
             mid_line = (oline+cline)/2
 
             special_w = (c0/dpth) * W
-            special_h = mid_line * H
+            special_h = H - mid_line * H
             special_coord = [special_w, special_h]
-
 
             candle_len = hwick - lwick
             candle_mid = (_h+_l)/2
@@ -917,51 +1067,52 @@ class ChainedDrawer():
             candle_center = fit_to_zon(candle_mid, minP, maxP)
             body_mid_zone = fit_to_zon(body_mid, minP, maxP)
 
-            if entry and entry >_l and entry < _h:
-                h_position, l_position = (1-hwick-candle_len//8, 1-body_mid_zone) if entry > body_mid else (1-body_mid_zone, 1-lwick+candle_len//8)
-                if not draw_special:
-                    drwSqrZon(zone, h_position,(c0-0.55)/dpth,
-                                           l_position,(c0+0.55)/dpth,(colors.col_bg_darker))
-                w1 = 0.35
-                w2 = 0.4
-                w3 = 0.5
-                special = True
-                special_color = col 
-                special_priority = 0
-            elif stop and stop > _l and stop < _h:
-                h_position, l_position = (1-hwick-candle_len//8, 1-body_mid_zone) if stop > body_mid else (1-body_mid_zone, 1-lwick+candle_len//8)
-                if not draw_special:
-                    drwSqrZon(zone, h_position,(c0-0.55)/dpth,
-                                           l_position,(c0+0.55)/dpth,(colors.col_black))
-                w1 = 0.35
-                w2 = 0.4
-                w3 = 0.5
-                special = True
-                special_color = col 
-                special_priority = 1
-            elif profit and profit > _l and profit < _h:
-                h_position, l_position = (1-hwick-candle_len//8, 1-body_mid_zone) if profit > body_mid else (1-body_mid_zone, 1-lwick+candle_len//8)
-                if not draw_special:
-                    drwSqrZon(zone, h_position,(c0-0.55)/dpth,
-                                           l_position,(c0+0.55)/dpth,(colors.col_bt_pressed))
-                w1 = 0.35
-                w2 = 0.4
-                w3 = 0.5
-                special = True
-                special_color = col 
-                special_priority = 2
-            #elif idle and idle > _l and idle < _h:
-                h_position, l_position = (1-hwick-candle_len//8, 1-body_mid_zone) if idle > body_mid else (1-body_mid_zone, 1-lwick+candle_len//8)
-                if not draw_special:
-                    drwSqrZon(zone, h_position,(c0-0.55)/dpth,
-                                           l_position,(c0+0.55)/dpth,(colors.col_wicked_darker))
-                w1 = 0.35
-                w2 = 0.4
-                w3 = 0.5
-                special = False
-                #special = True
-                #special_color = col 
-                #special_priority = 3
+            # if entry and entry >_l and entry < _h:
+            #     h_position, l_position = (1-hwick-candle_len//8, 1-body_mid_zone) if entry > body_mid else (1-body_mid_zone, 1-lwick+candle_len//8)
+            #     if not draw_special:
+            #         drwSqrZon(zone, h_position,(c0-0.55)/dpth,
+            #                                l_position,(c0+0.55)/dpth,(colors.col_bg_darker))
+            #     w1 = 0.35
+            #     w2 = 0.4
+            #     w3 = 0.5
+            #     special = True
+            #     special_color = col 
+            #     special_priority = 0
+            # elif stop and stop > _l and stop < _h:
+            #     h_position, l_position = (1-hwick-candle_len//8, 1-body_mid_zone) if stop > body_mid else (1-body_mid_zone, 1-lwick+candle_len//8)
+            #     if not draw_special:
+            #         drwSqrZon(zone, h_position,(c0-0.55)/dpth,
+            #                                l_position,(c0+0.55)/dpth,(colors.col_black))
+            #     w1 = 0.35
+            #     w2 = 0.4
+            #     w3 = 0.5
+            #     special = True
+            #     special_color = col 
+            #     special_priority = 1
+            # elif profit and profit > _l and profit < _h:
+            #     h_position, l_position = (1-hwick-candle_len//8, 1-body_mid_zone) if profit > body_mid else (1-body_mid_zone, 1-lwick+candle_len//8)
+            #     if not draw_special:
+            #         drwSqrZon(zone, h_position,(c0-0.55)/dpth,
+            #                                l_position,(c0+0.55)/dpth,(colors.col_bt_pressed))
+            #     w1 = 0.35
+            #     w2 = 0.4
+            #     w3 = 0.5
+            #     special = True
+            #     special_color = col 
+            #     special_priority = 2
+            # #elif idle and idle > _l and idle < _h:
+            #     h_position, l_position = (1-hwick-candle_len//8, 1-body_mid_zone) if idle > body_mid else (1-body_mid_zone, 1-lwick+candle_len//8)
+            #     if not draw_special:
+            #         drwSqrZon(zone, h_position,(c0-0.55)/dpth,
+            #                                l_position,(c0+0.55)/dpth,(colors.col_wicked_darker))
+            #     w1 = 0.35
+            #     w2 = 0.4
+            #     w3 = 0.5
+            #     special = False
+            #     #special = True
+            #     #special_color = col 
+            #     #special_priority = 3
+            #
 
             if candle.to_offset and candle.to_price and not line.mode == "QUESTION" and line.burn_mode:
                 p_connected = fit_to_zon(candle.to_price, minP, maxP)
@@ -1196,19 +1347,21 @@ class ChainedDrawer():
                     else:
                         drwLineZon(zone, 1-hwick-3.5/dpth,(c0-w0/3)/dpth,1-hwick-4.5/dpth, (c0+w0/3)/dpth,col,strk=2)
 
+            #if len(line.constant_variations)%2 == i%2 and not last and line.mode == "QUESTION":
+                #return special, special_color, special_priority, special_coord
 
-            offseta = 2 if not draw_special else 0 
-            offsetb = 2 if not draw_special else 1
+            offseta = 1 if not draw_special else 0 
+            offsetb = 1 if not draw_special else 1
             stroke = 2 #if not draw_special else 4
-            if idle and (idle>=_l and idle<=_h or last or first):
+            if idle and ((idle>=_l and idle<=_h) or (last or first) and (idle > maxP or idle < minP)):
                 line_level = fit_to_zon(idle, minP, maxP)
-                special_coord[1] = (1-line_level)*H
+                #special_coord[1] = (1-line_level)*H
                 drwLineZon(zone, 1-line_level,(i-offseta)/dpth,1-line_level,(i+offsetb)/dpth,
                                colors.col_wicked_darker, strk = stroke)
 
-            if entry and (entry>=_l and entry <=_h or last or first):
+            if entry and ((entry>=_l and entry <=_h) or (last or first) and (entry > maxP or entry < minP)):
                 line_level = fit_to_zon(entry, minP, maxP)
-                special_coord[1] = (1-line_level)*H
+                #special_coord[1] = (1-line_level)*H
                 if not entry_activated:
                     drwLineZon(zone, 1-line_level,
                                    (i-offseta)/dpth,1-line_level,(i+offsetb)/dpth,
@@ -1218,9 +1371,9 @@ class ChainedDrawer():
                                    (i-offseta)/dpth,1-line_level,
                                    (i+offsetb)/dpth,(150,255,150),
                                    strk = stroke*2)
-            if stop and (stop>=_l and stop<=_h or last or first):
+            if stop and ((stop>=_l and stop<=_h) or (last or first) and (stop > maxP or stop < minP)):
                 line_level = fit_to_zon(stop, minP, maxP)
-                special_coord[1] = (1-line_level)*H
+                #special_coord[1] = (1-line_level)*H
                 if not stop_activated:
                     drwLineZon(zone,
                                    1-line_level,(i-offseta)/dpth,1-line_level,(i+offsetb)/dpth,
@@ -1228,9 +1381,9 @@ class ChainedDrawer():
                 else:
                     drwLineZon(zone, 1-line_level,(i-offseta)/dpth,1-line_level,(i+offsetb)/dpth,
                                    (255,150,150), strk = stroke*2)
-            if profit and (profit >=_l and profit<=_h or last or first):
+            if profit and ((profit >=_l and profit<=_h) or (last or first) and (profit > maxP or profit < minP)):
                 line_level = fit_to_zon(profit, minP, maxP)
-                special_coord[1] = (1-line_level)*H
+                #special_coord[1] = (1-line_level)*H
                 if not profit_activated:
                     drwLineZon(zone, 1-line_level,(i-offseta)/dpth,1-line_level,(i+offsetb)/dpth,
                                    (255,150,255), strk = stroke)
@@ -1238,7 +1391,19 @@ class ChainedDrawer():
                     drwLineZon(zone, 1-line_level,(i-offseta)/dpth,1-line_level,(i+offsetb)/dpth,
                                    (255,150,255), strk = stroke*2)
 
-            return special, special_color, special_priority, special_coord
+            if candle.label and candle.index%2 == line.static_variation%2:
+                if candle.red:
+                    x, y = fitPointZone(zone, 1-lwick+0.03,c0/dpth)
+                else:
+                    x, y = fitPointZone(zone, 1-hwick-0.03,c0/dpth)
+
+                place_text(candle.label.upper(), y, x, base_col = col )
+
+
+            if candle.index == line.initial_idx + line.test_idx:
+                return True, col, 0, special_coord
+            else:
+                return None, None, None, None
 
         def fill_volume_bars(candles, minP, maxP):
             min_vol = min(candles, key = lambda _ : _.v).v
@@ -1295,6 +1460,7 @@ class ChainedDrawer():
                 print("no candles provided")
                 return []
 
+
             inter_color = lambda v1, v2, p: v1 + (v2-v1)*p
             interpolate = lambda col1, col2, percent: (inter_color(col1[0], col2[0], percent),
                                                        inter_color(col1[1], col2[1], percent),
@@ -1302,6 +1468,14 @@ class ChainedDrawer():
 
             volume_bars = fill_volume_bars(candles, minV, maxV) 
             price_range = maxV - minV
+
+            part_of_screen = 1/8
+            vol_strk = 32
+
+            # if random.randint(0,10) < 2:
+            #     part_of_screen = 1/4
+            #     vol_strk = 12
+
             for i, volume_bar in enumerate(volume_bars):
                 pr1 = fit_to_zon(((i+0.4)/30)*price_range + minV, minV, maxV)
                 pr2 = fit_to_zon(((i+1-0.4)/30)*price_range + minV, minV, maxV)
@@ -1314,13 +1488,11 @@ class ChainedDrawer():
                 abs_fill = abs(volume_bar[1])
                 col = interpolate(colors.white, col, abs_fill)
 
-                part_of_screen = 1/8
-                if random.randint(0,10)<2:
-                    part_of_screen = 1/2
+
                 drwLineZon(zone, 1-prm,(0),
-                            1-prm,(volume_rel*part_of_screen),col, strk = 32, out_line=False, ignore_spit = True)
+                            1-prm,(volume_rel*part_of_screen),col, strk = vol_strk, out_line=False, ignore_spit = True)
                 drwLineZon(zone, 1-prm,(1),
-                            1-prm,(1-volume_rel*part_of_screen),col, strk = 32, out_line=False, ignore_spit = True)
+                            1-prm,(1-volume_rel*part_of_screen),col, strk = vol_strk, out_line=False, ignore_spit = True)
 
 
             special_ones = []
@@ -1338,8 +1510,8 @@ class ChainedDrawer():
                            last = last, first=first, dpth = DPTH)
 
                 special, special_color, special_priority, special_w = feedback
-                if i >= line.question_index-1:
-                    special = None
+                #if i >= line.question_index-1:
+                    #special = None
 
                 if special:
                     special_ones.append([candle, special_priority, special_color, special_w])
@@ -1347,11 +1519,11 @@ class ChainedDrawer():
             return sorted(special_ones, key = lambda _ : _[1])
 
         def find_suitable_squares(candles, minV, maxV):
-            initial_index = line.question_index-1 
+            initial_index = line.question_index-5
             selected_rects = []
-            for front in range(initial_index, line.floating_offset, -10):
+            for front in range(initial_index, line.floating_offset+15, -5):
                 i2 = front
-                i1 = max(0, front - 10)
+                i1 = max(0, front - 5)
                 max_high     = max(candles[i1:i2], key = lambda _ : _.h).h
                 min_low      = min(candles[i1:i2], key = lambda _ : _.l).l
 
@@ -1366,12 +1538,12 @@ class ChainedDrawer():
                 wd = w2 - w1
 
                 if not max_high_abs - H//8 < 0:
-                    mh = max(max_high_abs - H//8 - H//16 , max_high_abs - H//32)
-                    mnh = min(max_high_abs - H//8 - H//16 , max_high_abs - H//32)
+                    mh = max(max_high_abs - H//8 , max_high_abs - H//32)
+                    mnh = min(max_high_abs - H//8 , max_high_abs - H//32)
                     selected_rects.append([mnh, w1+wd*0.35, mh, w1+wd*0.65])
                 if not min_low_abs + H//8 > H:
-                    mh = max(min_low_abs + H//8 + H//16, min_low_abs + H//32)
-                    mnh = min(min_low_abs + H//8+ H//16 , min_low_abs + H//32)
+                    mh = max(min_low_abs + H//8 , min_low_abs + H//32)
+                    mnh = min(min_low_abs + H//8 , min_low_abs + H//32)
                     selected_rects.append([mnh, w1+wd*0.35, mh, w1+wd*0.65])
 
             return selected_rects
@@ -1420,6 +1592,7 @@ class ChainedDrawer():
         place_x_shift = lambda _ : (_)/(DPTH*(len(high_tf_line)/VISUAL_PART)/0.2) + 0.4
 
         place_y_shift = position_y_low
+
         if SPLIT_VIEW:
             avg_low = (candles[-4].l + candles[-3].l + candles[-2].l + candles[-1].l)/4
         else:
@@ -1428,20 +1601,20 @@ class ChainedDrawer():
             place_y_shift = position_y_high 
         
         high_tf_overlay = False
-        if random.randint(0,10)<2:
-            # x0 = (high_tf_line[0][0])/(DPTH*(len(high_tf_line)/VISUAL_PART)/0.2) + 0.4
-            place_x_shift = lambda _ : _/(DPTH*(len(high_tf_line)/VISUAL_PART))
-            place_y_shift = lambda _ : _
-            high_tf_overlay = True
+        # if random.randint(0,10)<2:
+        #     # x0 = (high_tf_line[0][0])/(DPTH*(len(high_tf_line)/VISUAL_PART)/0.2) + 0.4
+        #     place_x_shift = lambda _ : _/(DPTH*(len(high_tf_line)/VISUAL_PART))
+        #     place_y_shift = lambda _ : _
+        #     high_tf_overlay = True
 
         if True:
 
             if line.static_variation%2==0 and not line.blink:
-                thn_htf_ln = 10 if not high_tf_overlay else 30
-                thk_htf_ln = 8 if not high_tf_overlay else 25
+                thn_htf_ln = 10 if not high_tf_overlay else 10
+                thk_htf_ln = 8 if not high_tf_overlay else 8
             else:
-                thn_htf_ln = 5 if not high_tf_overlay else 20 
-                thk_htf_ln = 4 if not high_tf_overlay else 15
+                thn_htf_ln = 5 if not high_tf_overlay else 10 
+                thk_htf_ln = 4 if not high_tf_overlay else 8
 
             minH = min(high_tf_line, key = lambda _ : _[1])[1]
             maxH = max(high_tf_line, key = lambda _ : _[1])[1]
@@ -1458,10 +1631,6 @@ class ChainedDrawer():
 
             y1 = place_y_shift(fit_to_zon(high_tf_line[0][1], minH, maxH))
             y2 = place_y_shift(fit_to_zon(high_tf_line[-1][1], minH, maxH))
-            # x0 = (high_tf_line[0][0])/(DPTH*(len(high_tf_line)/VISUAL_PART)/0.2) + 0.4
-            # x1 = (high_tf_line[0][0]+0.5)/(DPTH*(len(high_tf_line)/VISUAL_PART)/0.2) + 0.4
-            # x2 = (high_tf_line[-1][0]+0.5)/(DPTH*(len(high_tf_line)/VISUAL_PART)/0.2) + 0.4
-            # x3 = (high_tf_line[-1][0]+2)/(DPTH*(len(high_tf_line)/VISUAL_PART)/0.2) + 0.4
             x0 = place_x_shift(high_tf_line[0][0])
             x1 = place_x_shift(high_tf_line[0][0]+0.5)
             x2 = place_x_shift(high_tf_line[-1][0]+0.5)
@@ -1546,6 +1715,9 @@ class ChainedDrawer():
                 if yL >= y1 and yL <= y2:
                     drwLineZon(draw_tasks[0][1], 1-yL,x0,1-yL,x3,colors.col_black, strk = thn_htf_ln, out_line=False, ignore_spit = True)
 
+                if high_tf_overlay:
+                    continue
+
                 if yE and yE >= y1 and yE <= y2:
                     drwLineZon(draw_tasks[0][1], 1-yE,x0,1-yE,x3,(150,255,150), strk = thk_htf_ln, out_line=False, ignore_spit = True)
                 if yP and yP >= y1 and yP <= y2:
@@ -1561,22 +1733,31 @@ class ChainedDrawer():
                    0,0.5+(1/64),
                    colors.col_bt_pressed, strk = 6, ignore_spit = True)
 
-        if line.mode == "QUESTION" and not line.burn_mode and line.idle_x:
-            line_color = colors.col_bt_down
-            strk = 3
-            cross = 2/DPTH
-            if not line.initial_action_done:
-                if line.initial_action == "ENTRY":
-                    line_color = (150,255,150)
-                    strk = 5
-                    cross += 4/DPTH
-                if line.initial_action == "SL":
-                    strk = 5
-                    cross += 4/DPTH
-                    line_color = (255,150,150)
+        # IF MODE == MOUSE
+        #if line.mode == "QUESTION" and not line.burn_mode and line.idle_x:
+        if line.mode == "QUESTION" and not line.burn_mode:
+            # line_color = colors.col_bt_down
+            # strk = 3
+            # cross = 2/DPTH
 
-            drwLineZon(draw_tasks[0][1], 1,line.idle_x,0,line.idle_x,line_color, strk = strk, ignore_spit = True)
-            drwLineZon(draw_tasks[0][1], 1-idle_l,line.idle_x-cross,1-idle_l,line.idle_x+cross,line_color, strk = strk, ignore_spit = True)
+            if line.letter_idx and not line.select_mode:
+                place_text(line.letter_idx, W//2, H//2, base_col = (50,50,50),renderer = S.cyrillic_60 )
+            elif line.select_mode:
+                place_text("*", W//2, H//2, base_col = (50,50,50),renderer = S.cyrillic_60 )
+
+
+            # if not line.initial_action_done:
+            #     if line.initial_action == "ENTRY":
+            #         line_color = (150,255,150)
+            #         strk = 5
+            #         cross += 4/DPTH
+            #     if line.initial_action == "SL":
+            #         strk = 5
+            #         cross += 4/DPTH
+            #         line_color = (255,150,150)
+
+            # if not entry and not stop and not profit:
+            #         drwLineZon(draw_tasks[0][1], 0.5,0.4,0.5,0.6,line_color, strk = strk, ignore_spit = True)
 
         special_lines = lines if line.mode!="QUESTION" or line.static_variation%3 == 0 else lines[1:]
         lines_stroke = 3 if not line.static_variation%3==0 and not line.blink else 5
@@ -1617,12 +1798,13 @@ class ChainedDrawer():
 
         trim_col = lambda _ : _ if _ <= 255 else 255
         dim_col = lambda _ : int((_*1.25))
-        special_ones = [_ for (i,_) in enumerate(special_ones) if i%line.static_variation==0]
+        #special_ones = [_ for (i,_) in enumerate(special_ones) if i%line.static_variation==0]
 
-        if line.static_variation == 1:
-            special_ones = []
+        #if line.static_variation == 1:
+            #special_ones = []
 
         for special_candle in special_ones[::-1]:
+
             if not additional_squares:
                 break
 
@@ -1632,12 +1814,14 @@ class ChainedDrawer():
 
             sp_zone =  min(additional_squares, key = distance)
             line_len = distance(sp_zone)
-            if line_len > W//10:
-                continue
+            #if line_len > W//10:
+                #continue
             y1, x1, y2, x2 = sp_zone
             xm, ym = (x1+x2)/2, (y1+y2)/2
 
-            #drwZonBrdr(sp_zone)
+            if line.select_mode:
+                drwZonBrdr(sp_zone)
+
             drawCircleSimple(x0, y0, 4, (250,250,250))
             drwLineSimple(xm, ym, x0, y0)
             candle = special_candle[0]
@@ -1668,12 +1852,35 @@ class KeyboardChainModel():
         S.down = 'down'
         S.pressed = 'pressed'
         S.mapping = OrderedDict()
-        S.mapping[backend.api().K_d]         = S.up
-        S.mapping[backend.api().K_f]         = S.up
-        S.mapping[backend.api().K_j]         = S.up
-        S.mapping[backend.api().K_k]         = S.up
+        S.mapping[backend.api().K_q]         = ["q",S.up]
+        S.mapping[backend.api().K_w]         = ["w",S.up]
+        S.mapping[backend.api().K_e]         = ["e",S.up]
+        S.mapping[backend.api().K_r]         = ["r",S.up]
+        S.mapping[backend.api().K_t]         = ["t",S.up]
+        S.mapping[backend.api().K_y]         = ["y",S.up]
+        S.mapping[backend.api().K_u]         = ["u",S.up]
+        S.mapping[backend.api().K_i]         = ["i",S.up]
+        S.mapping[backend.api().K_o]         = ["o",S.up]
+        S.mapping[backend.api().K_p]         = ["p",S.up]
+        S.mapping[backend.api().K_a]         = ["a",S.up]
+        S.mapping[backend.api().K_s]         = ["s",S.up]
+        S.mapping[backend.api().K_d]         = ["d",S.up]
+        S.mapping[backend.api().K_f]         = ["f",S.up]
+        S.mapping[backend.api().K_g]         = ["g",S.up]
+        S.mapping[backend.api().K_h]         = ["h",S.up]
+        S.mapping[backend.api().K_j]         = ["j",S.up]
+        S.mapping[backend.api().K_k]         = ["k",S.up]
+        S.mapping[backend.api().K_l]         = ["l",S.up]
+        S.mapping[backend.api().K_z]         = ["z",S.up]
+        S.mapping[backend.api().K_x]         = ["x",S.up]
+        S.mapping[backend.api().K_c]         = ["c",S.up]
+        S.mapping[backend.api().K_v]         = ["v",S.up]
+        S.mapping[backend.api().K_b]         = ["b",S.up]
+        S.mapping[backend.api().K_n]         = ["n",S.up]
+        S.mapping[backend.api().K_m]         = ["m",S.up]
+        S.mapping[backend.api().K_SPACE]     = ["select",S.up]
 
-        S.keys = [S.up for _ in range(6)]
+        S.keys = [S.up for _ in range(27)]
 
     def process_button(S, current_state, new_state):
         if current_state == S.up and new_state == S.down:
@@ -1692,11 +1899,12 @@ class KeyboardChainModel():
 
     def get_inputs(S):
         keys = backend.api().key.get_pressed()
+
         for control_key in S.mapping:
             if keys[control_key]:
-                S.mapping[control_key] = S.process_button(S.mapping[control_key], S.down)
+                S.mapping[control_key][1] = S.process_button(S.mapping[control_key][1], S.down)
             else:
-                S.mapping[control_key] = S.process_button(S.mapping[control_key], S.up)
+                S.mapping[control_key][1] = S.process_button(S.mapping[control_key][1], S.up)
 
     def get_keys(S):
         S.get_inputs()
@@ -1745,9 +1953,18 @@ class ChainedProcessor():
 
         if S.active_entity.mode == "SHOW":
             S.time_elapsed_cummulative = 0
+
+            if KEYBOARD_MODE:
+                S.active_entity.time_estemated *=2
+
+            S.active_beat_time = (60*1000)/S.active_entity.time_estemated
+
             S.ui_ref.move_image = True
+            S.ui_ref.show_mode = True
             if LAST_META:
                 S.ui_ref.meta_text = LAST_META
+        else:
+            S.ui_ref.show_mode = False
 
         if S.active_entity.mode == "DONE":
             S.ui_ref.global_progress = S.producer.chains.get_chains_progression()
@@ -1757,7 +1974,7 @@ class ChainedProcessor():
                                                S.W, S.H)
 
             blink_activated = False
-            if S.active_entity.uid == S.last_uid and random.randint(0,10) > 9:
+            if not TEST and S.active_entity.uid == S.last_uid and random.randint(0,10) > 9:
                 S.ui_ref.blink = True
                 blink_activated = True
                 S.active_entity.mode = "SHOW"
@@ -1771,8 +1988,10 @@ class ChainedProcessor():
             S.ui_ref.meta_text = ""
             S.ui_ref.move_image = False
             S.time_elapsed_cummulative = 0
+
             if blink_activated:
                 S.active_entity.time_estemated /= 3
+
             S.active_beat_time = (60*1000)/S.active_entity.time_estemated
 
 
@@ -1784,7 +2003,7 @@ class ChainedProcessor():
         S.drawer.generateOCHLPicture(S.active_entity)
 
     def get_pressed(S, key_states):
-        mark_pressed = lambda _ : True if _ == "pressed" else False
+        mark_pressed = lambda _ : _[0] if _[1] == "pressed" else ""
         return [mark_pressed(_) for _ in key_states]
 
     def get_feedback(S):
@@ -1835,6 +2054,11 @@ class ChainedProcessor():
             return 0
 
     def process_inputs(S, time_elapsed = 0):
+        #if S.active_entity and not S.active_entity.burn_mode:
+            #key_states = S.control.get_inputs_raw()
+            #key_states = [False, False, False, False]
+        #else:
+
         key_states = S.control.get_keys()
 
         if S.active_entity:

@@ -80,7 +80,7 @@ upper_stats = UpperLayout(display_surface)
 
 new_line_counter = Counter(upper_stats)
 if TEST:
-    pause_counter = Counter(bpm = 5)
+    pause_counter = Counter(bpm = 1)
 else:
     pause_counter = Counter(bpm = 1/3)
 screenshot_timer = Counter(bpm = 1)
@@ -154,6 +154,8 @@ def dump_report():
         now = datetime.datetime.now()
         timestamp = f"{now.day}.{now.month} {now.hour}:{now.minute}"
         report_line = timestamp + " " + " ".join(current_progress) + "|" + f" {total}$" + f" | {max_streak-max_fallback} | {mark}"
+        if TEST:
+            report_line = "TEST " + report_line
         reportfile.write(report_line+"\n")
 
 
@@ -283,7 +285,7 @@ for time_delta in delta_timer:
 
 
         if meta:
-            chunks = [meta[i:i+70] for i in range(0, len(meta), 70)]
+            chunks = ["read if time left"] + [meta[i:i+70] for i in range(0, len(meta), 70)]
             for i, chunk in enumerate(chunks):
                 place_text(chunk,
                             W//2,
@@ -295,11 +297,19 @@ for time_delta in delta_timer:
                                                    quadra_w_perce1))
         if meta_minor:
             back_v_found = False
+            back_t_found = False
 
             for i, line in enumerate(meta_minor):
                 if "*** IBACKV ***" in line:
                     upper_stats.back_v = line
                     back_v_found = True
+
+                if "*** 1XTEXT ***" in line:
+                    back_t_found = True
+
+                if not back_t_found and not "#" in line:
+                    continue
+
                 place_text(line,
                             W//2,
                             H//2-500 + 30*(i+1),
@@ -315,7 +325,7 @@ for time_delta in delta_timer:
         backend.api().display.update()
         keys = backend.api().key.get_pressed()
 
-        if keys[backend.api().K_SPACE]:
+        if keys[backend.api().K_LSHIFT] or keys[backend.api().K_RSHIFT]:
             paused = False
 
             if len(pause_progression) >=5:
@@ -391,7 +401,7 @@ for time_delta in delta_timer:
 
 
     if new_line_counter.is_tick(time_delta):
-        pyautogui.moveTo(SCREEN_X_0//2+W//64, SCREEN_Y_0+H//2)
+        pyautogui.moveTo(SCREEN_X_0//2+W//64, SCREEN_Y_0 + random.randint(H//2-H//3, H//2+H//3))
         next_tick_time, meta, meta_minor = active_game.add_line()
         new_line_counter.modify_bpm(next_tick_time)
 
@@ -448,7 +458,7 @@ for time_delta in delta_timer:
     backend.api().display.update()
 
     keys = backend.api().key.get_pressed()
-    if keys[backend.api().K_v]:
+    if keys[backend.api().K_RETURN]:
         paused = True
         timer_1m.drop_elapsed()
         tokens_1m = []
