@@ -12,13 +12,13 @@ sets_prefix = os.path.join(os.getcwd(), "learning_sets")
 def locate_set(_):
     return os.path.join(sets_prefix, _)
 
-target_set = "fx_30"
+# target_set = "fx_30"
 # target_set = "fx_60"
 # target_set = "cm_30"
 # target_set = "cm_60"
 # target_set = "test_set"
 
-#  target_set = "cm_60"
+target_set = "cm_60"
 target_dir = locate_set(target_set)
 
 if not os.path.exists(target_dir):
@@ -38,7 +38,7 @@ for _r, _d, _f in os.walk(data_directory):
 
 
 def generate_random_positions(selected_file):
-    random_pos = random.randint(20000, 80000)
+    random_pos = random.randint(10000, 90000)
     for incr in range(5):
         yield random_pos + incr * 30
 

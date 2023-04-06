@@ -1,17 +1,45 @@
 import os
 from collections import OrderedDict
-from epitran.backoff import Backoff
-backoff = Backoff(['eng-Latn'])
+import random
 
+sets_prefix = os.path.join(os.getcwd(), "learning_sets")
 
-STOCKS_DATA = os.path.join(os.getcwd(), "stocks_data.csv")
-PROGRESSION_FILE = os.path.join(os.getcwd(), "stocks_progress.json")
-IMAGES_MAPPING_FILE = os.path.join(os.getcwd(), "dataset_mapping_2500.json")
-CHINESE_FONT = os.path.join(os.getcwd(), "fonts", "simhei.ttf")
-CYRILLIC_FONT = os.path.join(os.getcwd(), "fonts", "Inter_font.ttf")
+# POSITIVE_TEST = True
+POSITIVE_TEST = False
+
+TEST = True
+TEST = False
+
+def locate_set(_):
+    return os.path.join(sets_prefix, _)
+
+LEARNING_FOLDERS = []
+if not TEST:
+    LEARNING_FOLDERS.append(locate_set("fx_30"))
+    LEARNING_FOLDERS.append(locate_set("fx_60"))
+    LEARNING_FOLDERS.append(locate_set("cm_30"))
+    LEARNING_FOLDERS.append(locate_set("cm_60"))
+    LEARNING_FOLDERS.append(locate_set("legacy"))
+else:
+    LEARNING_FOLDERS.append(locate_set("test_set"))
+
+# random.seed(time())
+LEARNING_SET_FOLDER = random.choice(LEARNING_FOLDERS)
+
 META_SCRIPT = os.path.join(os.getcwd(), "trading_affirmations.csv")
 
-META_ACTION = os.path.join("/home/gloryi/Documents/SpecialFiles", "action_affirmations.csv")
+STOCKS_DATA = os.path.join(LEARNING_SET_FOLDER, "data.csv")
+_META_SCRIPT = os.path.join(LEARNING_SET_FOLDER, "trading_affirmations.csv")
+PROGRESSION_FILE = os.path.join(LEARNING_SET_FOLDER, "progress.json")
+IMAGES_MAPPING_FILE = os.path.join(LEARNING_SET_FOLDER, "images_mapping.json")
+_SET_CONFIG = os.path.join(LEARNING_SET_FOLDER, "config.json")
+
+CHINESE_FONT = os.path.join(os.getcwd(), "fonts", "simhei.ttf")
+CYRILLIC_FONT = os.path.join(os.getcwd(), "fonts", "Inter_font.ttf")
+
+META_ACTION = os.path.join(
+    "/home/gloryi/Documents/SpecialFiles", "action_affirmations.csv"
+)
 META_ACTION_STACK = OrderedDict()
 META_ACTION_STACK["*** 1XBACK ***"] = []
 META_ACTION_STACK["*** 1XKEYS ***"] = []
@@ -34,12 +62,7 @@ HAPTIC_CORRECT_CMD = os.path.join(os.getcwd(), "controller_features", "correct.s
 
 REPORTS_FILE = os.path.join("/home/gloryi/Documents/SpecialFiles", "results.csv")
 
-KEYBOARD_MODE = True
-
 BPM = 10
-
-TEST = True
-#TEST = False
 
 W = int(2800)
 H = int(1425)
@@ -47,7 +70,7 @@ H = int(1425)
 HIGHER_TIMEFRAME_SCALE = 16
 MID_TIMEFRAME_SCALE = 2
 MID_TIMEFRAME_SCALE_2 = 8
-#VISUAL_PART = 350
+# VISUAL_PART = 350
 GENERATION_TIME_SIZE = 140
-VISUAL_PART = 300
-STAKE_PART = 15
+VISUAL_PART = 180
+STAKE_PART = 8
