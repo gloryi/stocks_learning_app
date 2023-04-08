@@ -14,10 +14,10 @@
 ~MSle0~/mouse_mode
 
 # Command Line History (newest to oldest):
+:wq
+|2,0,1680949248,,"wq"
 :w
 |2,0,1680822101,,"w"
-:wq
-|2,0,1680818255,,"wq"
 :q
 |2,0,1680817995,,"q"
 
@@ -96,20 +96,20 @@
 |3,1,1,1,1,0,1680818060,"LEARNING_SET_FOLDER = locate_set(\"cm_30\")"
 
 # File marks:
-'0  251  30  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/feature_chain_mode.py
-|4,48,251,30,1680941782,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/feature_chain_mode.py"
-'1  31  12  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
-|4,49,31,12,1680818255,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
+'0  7  23  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/.git/MERGE_MSG
+|4,48,7,23,1680949249,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/.git/MERGE_MSG"
+'1  251  30  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/feature_chain_mode.py
+|4,49,251,30,1680941782,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/feature_chain_mode.py"
 '2  31  12  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
-|4,50,31,12,1680818219,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
-'3  16  1  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/_generate_stocks_listing.py
-|4,51,16,1,1680818211,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/_generate_stocks_listing.py"
-'4  31  12  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
-|4,52,31,12,1680818135,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
+|4,50,31,12,1680818255,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
+'3  31  12  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
+|4,51,31,12,1680818219,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
+'4  16  1  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/_generate_stocks_listing.py
+|4,52,16,1,1680818211,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/_generate_stocks_listing.py"
 '5  31  12  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
 |4,53,31,12,1680818135,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
-'6  3  12  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
-|4,54,3,12,1680818103,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
+'6  31  12  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
+|4,54,31,12,1680818135,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
 '7  3  12  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
 |4,55,3,12,1680818103,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
 '8  3  12  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
@@ -118,10 +118,20 @@
 |4,57,3,12,1680818103,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
 
 # Jumplist (newest first):
+-'  7  23  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/.git/MERGE_MSG
+|4,39,7,23,1680949249,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/.git/MERGE_MSG"
+-'  1  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/.git/MERGE_MSG
+|4,39,1,0,1680949188,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/.git/MERGE_MSG"
+-'  251  30  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/feature_chain_mode.py
+|4,39,251,30,1680941782,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/feature_chain_mode.py"
 -'  251  30  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/feature_chain_mode.py
 |4,39,251,30,1680941782,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/feature_chain_mode.py"
 -'  561  13  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/feature_chain_mode.py
 |4,39,561,13,1680822082,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/feature_chain_mode.py"
+-'  561  13  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/feature_chain_mode.py
+|4,39,561,13,1680822082,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/feature_chain_mode.py"
+-'  460  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/feature_chain_mode.py
+|4,39,460,0,1680822081,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/feature_chain_mode.py"
 -'  460  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/feature_chain_mode.py
 |4,39,460,0,1680822081,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/feature_chain_mode.py"
 -'  31  12  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
@@ -129,9 +139,17 @@
 -'  31  12  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
 |4,39,31,12,1680818255,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
 -'  31  12  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
+|4,39,31,12,1680818255,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
+-'  31  12  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
+|4,39,31,12,1680818255,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
+-'  31  12  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
+|4,39,31,12,1680818219,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
+-'  31  12  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
 |4,39,31,12,1680818219,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
 -'  31  12  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
 |4,39,31,12,1680818219,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
+-'  31  12  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
+|4,39,31,12,1680818219,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
 -'  16  1  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/_generate_stocks_listing.py
 |4,39,16,1,1680818211,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/_generate_stocks_listing.py"
 -'  16  1  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/_generate_stocks_listing.py
@@ -148,6 +166,38 @@
 |4,39,16,1,1680818211,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/_generate_stocks_listing.py"
 -'  16  1  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/_generate_stocks_listing.py
 |4,39,16,1,1680818211,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/_generate_stocks_listing.py"
+-'  16  1  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/_generate_stocks_listing.py
+|4,39,16,1,1680818211,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/_generate_stocks_listing.py"
+-'  16  1  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/_generate_stocks_listing.py
+|4,39,16,1,1680818211,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/_generate_stocks_listing.py"
+-'  16  1  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/_generate_stocks_listing.py
+|4,39,16,1,1680818211,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/_generate_stocks_listing.py"
+-'  16  1  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/_generate_stocks_listing.py
+|4,39,16,1,1680818211,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/_generate_stocks_listing.py"
+-'  16  1  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/_generate_stocks_listing.py
+|4,39,16,1,1680818211,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/_generate_stocks_listing.py"
+-'  16  1  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/_generate_stocks_listing.py
+|4,39,16,1,1680818211,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/_generate_stocks_listing.py"
+-'  16  1  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/_generate_stocks_listing.py
+|4,39,16,1,1680818211,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/_generate_stocks_listing.py"
+-'  16  1  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/_generate_stocks_listing.py
+|4,39,16,1,1680818211,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/_generate_stocks_listing.py"
+-'  1  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/_generate_stocks_listing.py
+|4,39,1,0,1680818162,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/_generate_stocks_listing.py"
+-'  1  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/_generate_stocks_listing.py
+|4,39,1,0,1680818162,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/_generate_stocks_listing.py"
+-'  1  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/_generate_stocks_listing.py
+|4,39,1,0,1680818162,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/_generate_stocks_listing.py"
+-'  1  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/_generate_stocks_listing.py
+|4,39,1,0,1680818162,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/_generate_stocks_listing.py"
+-'  1  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/_generate_stocks_listing.py
+|4,39,1,0,1680818162,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/_generate_stocks_listing.py"
+-'  1  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/_generate_stocks_listing.py
+|4,39,1,0,1680818162,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/_generate_stocks_listing.py"
+-'  1  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/_generate_stocks_listing.py
+|4,39,1,0,1680818162,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/_generate_stocks_listing.py"
+-'  1  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/_generate_stocks_listing.py
+|4,39,1,0,1680818162,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/_generate_stocks_listing.py"
 -'  1  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/_generate_stocks_listing.py
 |4,39,1,0,1680818162,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/_generate_stocks_listing.py"
 -'  1  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/_generate_stocks_listing.py
@@ -172,6 +222,14 @@
 |4,39,31,12,1680818135,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
 -'  31  12  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
 |4,39,31,12,1680818135,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
+-'  31  12  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
+|4,39,31,12,1680818135,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
+-'  31  12  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
+|4,39,31,12,1680818135,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
+-'  31  12  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
+|4,39,31,12,1680818135,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
+-'  31  12  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
+|4,39,31,12,1680818135,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
 -'  3  12  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
 |4,39,3,12,1680818115,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
 -'  3  12  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
@@ -188,6 +246,30 @@
 |4,39,3,12,1680818115,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
 -'  3  12  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
 |4,39,3,12,1680818115,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
+-'  3  12  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
+|4,39,3,12,1680818115,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
+-'  3  12  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
+|4,39,3,12,1680818115,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
+-'  3  12  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
+|4,39,3,12,1680818115,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
+-'  3  12  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
+|4,39,3,12,1680818115,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
+-'  3  12  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
+|4,39,3,12,1680818115,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
+-'  3  12  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
+|4,39,3,12,1680818115,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
+-'  3  12  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
+|4,39,3,12,1680818115,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
+-'  3  12  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
+|4,39,3,12,1680818115,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
+-'  3  12  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
+|4,39,3,12,1680818103,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
+-'  3  12  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
+|4,39,3,12,1680818103,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
+-'  3  12  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
+|4,39,3,12,1680818103,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
+-'  3  12  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
+|4,39,3,12,1680818103,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
 -'  3  12  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
 |4,39,3,12,1680818103,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
 -'  3  12  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
@@ -220,106 +302,31 @@
 |4,39,27,0,1680818093,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
 -'  27  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
 |4,39,27,0,1680818093,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
--'  26  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
-|4,39,26,0,1680818084,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
--'  26  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
-|4,39,26,0,1680818084,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
--'  26  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
-|4,39,26,0,1680818084,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
--'  26  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
-|4,39,26,0,1680818084,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
--'  26  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
-|4,39,26,0,1680818084,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
--'  26  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
-|4,39,26,0,1680818084,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
--'  26  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
-|4,39,26,0,1680818084,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
--'  26  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
-|4,39,26,0,1680818084,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
--'  26  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
-|4,39,26,0,1680818084,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
--'  26  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
-|4,39,26,0,1680818084,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
--'  26  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
-|4,39,26,0,1680818084,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
--'  26  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
-|4,39,26,0,1680818084,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
--'  28  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
-|4,39,28,0,1680818073,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
--'  28  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
-|4,39,28,0,1680818073,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
--'  28  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
-|4,39,28,0,1680818073,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
--'  28  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
-|4,39,28,0,1680818073,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
 -'  27  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
-|4,39,27,0,1680818073,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
--'  28  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
-|4,39,28,0,1680818073,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
--'  28  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
-|4,39,28,0,1680818073,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
+|4,39,27,0,1680818093,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
 -'  27  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
-|4,39,27,0,1680818073,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
--'  28  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
-|4,39,28,0,1680818073,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
--'  28  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
-|4,39,28,0,1680818073,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
--'  28  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
-|4,39,28,0,1680818073,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
--'  28  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
-|4,39,28,0,1680818073,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
+|4,39,27,0,1680818093,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
 -'  27  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
-|4,39,27,0,1680818073,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
--'  28  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
-|4,39,28,0,1680818073,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
--'  28  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
-|4,39,28,0,1680818073,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
+|4,39,27,0,1680818093,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
 -'  27  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
-|4,39,27,0,1680818073,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
+|4,39,27,0,1680818093,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
 -'  27  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
-|4,39,27,0,1680818064,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
+|4,39,27,0,1680818093,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
 -'  27  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
-|4,39,27,0,1680818064,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
+|4,39,27,0,1680818093,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
 -'  27  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
-|4,39,27,0,1680818064,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
+|4,39,27,0,1680818093,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
 -'  27  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py
-|4,39,27,0,1680818064,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
--'  1  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/.gitignore
-|4,39,1,0,1680817995,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/.gitignore"
--'  1  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/.gitignore
-|4,39,1,0,1680817995,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/.gitignore"
--'  1  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/.gitignore
-|4,39,1,0,1680817995,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/.gitignore"
--'  1  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/.gitignore
-|4,39,1,0,1680817995,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/.gitignore"
--'  1  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/.gitignore
-|4,39,1,0,1680817995,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/.gitignore"
--'  1  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/.gitignore
-|4,39,1,0,1680817995,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/.gitignore"
--'  1  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/.gitignore
-|4,39,1,0,1680817995,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/.gitignore"
--'  1  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/.gitignore
-|4,39,1,0,1680817995,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/.gitignore"
--'  1  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/.gitignore
-|4,39,1,0,1680817995,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/.gitignore"
--'  1  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/.gitignore
-|4,39,1,0,1680817995,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/.gitignore"
--'  1  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/.gitignore
-|4,39,1,0,1680817995,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/.gitignore"
--'  1  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/.gitignore
-|4,39,1,0,1680817995,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/.gitignore"
--'  1  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/.gitignore
-|4,39,1,0,1680817995,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/.gitignore"
--'  1  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/.gitignore
-|4,39,1,0,1680817995,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/.gitignore"
--'  1  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/.gitignore
-|4,39,1,0,1680817995,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/.gitignore"
--'  1  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/.gitignore
-|4,39,1,0,1680817995,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/.gitignore"
--'  1  0  /mnt/X/WORKSHOP/Scripts/stocks_learning_git/.gitignore
-|4,39,1,0,1680817995,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/.gitignore"
+|4,39,27,0,1680818093,"/mnt/X/WORKSHOP/Scripts/stocks_learning_git/config.py"
 
 # History of marks within files (newest to oldest):
+
+> /mnt/X/WORKSHOP/Scripts/stocks_learning_git/.git/MERGE_MSG
+	*	1680949247	0
+	"	7	23
+	^	7	24
+	.	7	24
+	+	7	24
 
 > /mnt/X/WORKSHOP/Scripts/stocks_learning_git/feature_chain_mode.py
 	*	1680822101	0
