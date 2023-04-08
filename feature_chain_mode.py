@@ -11,7 +11,6 @@ from config import W, H, CYRILLIC_FONT
 from config import CHINESE_FONT, VISUAL_PART
 from config import STAKE_PART, META_DIR, META_MINOR_DIR
 from config import IMAGES_MINOR_DIR, META_ACTION
-from config import HAPTIC_ERROR_CMD, HAPTIC_CORRECT_CMD
 from config import HIGHER_TIMEFRAME_SCALE
 from config import META_ACTION_STACK
 from config import TEST, POSITIVE_TEST
@@ -3251,8 +3250,6 @@ class ChainedProcessor:
             NEW_EVENT = False
             S.ui_ref.bg_color = colors.dark_green
 
-            if random.randint(0, 10) > 5 and HAPTIC_CORRECT_CMD:
-                subprocess.Popen(["bash", HAPTIC_CORRECT_CMD])
 
             if S.last_positive and random.randint(0, 10) > 5:
                 rnd_image = S.producer.produce_minor_image()
@@ -3276,8 +3273,6 @@ class ChainedProcessor:
             S.ui_ref.bg_color = colors.dark_red
             S.last_positive = False
 
-            if random.randint(0, 10) > 5 and HAPTIC_ERROR_CMD:
-                subprocess.Popen(["bash", HAPTIC_ERROR_CMD])
 
             if not S.active_entity or S.active_entity.uid == S.last_uid:
                 return 0

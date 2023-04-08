@@ -27,8 +27,7 @@ from config import (
     H,
     BPM,
     CYRILLIC_FONT,
-    HAPTIC_CORRECT_CMD,
-    HAPTIC_ERROR_CMD,
+    HAPTIC_FEEDBACK,
 )
 from config import REPORTS_FILE
 from config import TEST
@@ -96,10 +95,10 @@ else:
     pause_counter = Counter(bpm=1 / 3)
 
 screenshot_timer = Counter(bpm=1)
-quadra_timer = Counter(bpm=12)
+quadra_timer = Counter(bpm=10)
 morfer_timer = Counter(bpm=15)
 timer_1m = Counter(bpm=1)
-haptic_timer = Counter(bpm=15)
+haptic_timer = Counter(bpm=60)
 timer_dropped = False
 
 tokens_1m = []
@@ -169,6 +168,9 @@ def screenshot_to_image(pil_image):
     py_image = py_image.convert()
     image_scaled = backend.api().transform.scale(py_image, (W // 3, H // 2))
     return image_scaled
+    
+def inter_simple(v1, v2, p):
+    return v1 + (v2 - v1) * p
 
 
 def dump_report():
@@ -235,8 +237,8 @@ for time_delta in delta_timer:
 
         if timer_dropped:
             if haptic_timer.is_tick(time_delta):
-                if HAPTIC_ERROR_CMD:
-                    subprocess.Popen(["bash", HAPTIC_ERROR_CMD])
+                if HAPTIC_FEEDBACK:
+                    HAPTIC_FEEDBACK(higher_freq  = 40000, duration=500)
 
         display_surface.fill(white)
         for i, active_screenshot in enumerate(pause_screenshots):
@@ -281,6 +283,12 @@ for time_delta in delta_timer:
 
         trans_surface.fill((40, 0, 40))
         trans_surface2.fill((40, 0, 40))
+
+        if not timer_dropped:
+            if haptic_timer.is_tick(time_delta):
+                if HAPTIC_FEEDBACK:
+                    inter_freq = int(inter_simple(0, 65000, quadra_w_perce1))
+                    HAPTIC_FEEDBACK(higher_freq  = inter_freq)
 
         if not timer_dropped:
             backend.api().draw.rect(
@@ -436,8 +444,6 @@ for time_delta in delta_timer:
             else:
                 tokens_key = backend.api().K_k
             tokens_1m.append("*")
-            if HAPTIC_CORRECT_CMD:
-                subprocess.Popen(["bash", HAPTIC_CORRECT_CMD])
             if len(tokens_1m) > 10:
                 tokens_1m = []
 
@@ -474,6 +480,10 @@ for time_delta in delta_timer:
 
     upper_stats.quadra_w_perce1 = quadra_w_perce1
     upper_stats.quadra_w_perce2 = quadra_w_perce2
+    if haptic_timer.is_tick(time_delta):
+        if HAPTIC_FEEDBACK:
+            inter_freq = int(inter_simple(0, 65000, quadra_w_perce1))
+            HAPTIC_FEEDBACK(higher_freq  = inter_freq)
 
     if pause_counter.is_tick(time_delta):
         pause_progression.append(f"{active_balance}$")
