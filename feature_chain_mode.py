@@ -207,9 +207,10 @@ class ChainedEntity:
 
         S.cached_candles = None
         S.filtered_candles = []
-        S.avaliable_filters = ["RD","GR","VR","SC","OVH","OVL",
-                                "IN","PR","WPP","WPN","UFW","DFW",
-                                "TU","TL","UB","DB"]
+        S.avaliable_filters = ["red","grn","vlr","scl","ovh","ovl",
+                                "inn","prc","wpp","wpn","ufw","dfw",
+                                "thu","thl","ubr","dbr","swr","swf"]
+        random.shuffle(S.avaliable_filters)
 
         S.cached_lines = None
         S.cached_lines_2 = None
@@ -465,7 +466,20 @@ class ChainedEntity:
 
         S.match_error()
 
-    def query_action(S, direct_input = None):
+    def query_action(S, direct_input = None, raw_input = False):
+
+        if raw_input:
+            new_action = S.keyboard_input.upper().strip()
+
+            if not new_action.isnumeric():
+                S.keyboard_input = ""
+                actions_list = new_action.split(" ")
+                S.query_action(direct_input = "DROP")
+                for action in actions_list:
+                    S.query_action(direct_input = action)
+                return
+
+
         if direct_input:
             new_action = direct_input.upper().strip()
         else:
@@ -489,21 +503,22 @@ class ChainedEntity:
             f.label = ""
 
 
-        if "RD" in S.input_filters_stack:
+
+        if "RED" in S.input_filters_stack:
             S.filtered_candles = [_ for _ in S.filtered_candles if _.red]
-        if "GR" in S.input_filters_stack:
+        if "GRN" in S.input_filters_stack:
             S.filtered_candles = [_ for _ in S.filtered_candles if _.green]
-        if "VR" in S.input_filters_stack:
+        if "VLR" in S.input_filters_stack:
             S.filtered_candles = [_ for _ in S.filtered_candles if _.vRising]
-        if "SC" in S.input_filters_stack:
+        if "SCL" in S.input_filters_stack:
             S.filtered_candles = [_ for _ in S.filtered_candles if _.is_same_color]
         if "OVH" in S.input_filters_stack:
             S.filtered_candles = [_ for _ in S.filtered_candles if _.overhigh]
         if "OVL" in S.input_filters_stack:
             S.filtered_candles = [_ for _ in S.filtered_candles if _.overlow]
-        if "IN" in S.input_filters_stack:
+        if "INN" in S.input_filters_stack:
             S.filtered_candles = [_ for _ in S.filtered_candles if _.inner]
-        if "PR" in S.input_filters_stack:
+        if "PRC" in S.input_filters_stack:
             S.filtered_candles = [_ for _ in S.filtered_candles if _.pierce]
         if "WPP" in S.input_filters_stack:
             S.filtered_candles = [_ for _ in S.filtered_candles if _.weak_pierce_prev]
@@ -513,14 +528,18 @@ class ChainedEntity:
             S.filtered_candles = [_ for _ in S.filtered_candles if _.up_from_within]
         if "DFW" in S.input_filters_stack:
             S.filtered_candles = [_ for _ in S.filtered_candles if _.down_from_within]
-        if "TU" in S.input_filters_stack:
+        if "THU" in S.input_filters_stack:
             S.filtered_candles = [_ for _ in S.filtered_candles if _.thick_upper]
-        if "TL" in S.input_filters_stack:
+        if "THL" in S.input_filters_stack:
             S.filtered_candles = [_ for _ in S.filtered_candles if _.thick_lower]
-        if "UB" in S.input_filters_stack:
+        if "UBR" in S.input_filters_stack:
             S.filtered_candles = [_ for _ in S.filtered_candles if _.upbreak]
-        if "DB" in S.input_filters_stack:
+        if "DBR" in S.input_filters_stack:
             S.filtered_candles = [_ for _ in S.filtered_candles if _.downbreak]
+        if "SWR" in S.input_filters_stack:
+            S.filtered_candles = [_ for _ in S.filtered_candles if _.swing_rise]
+        if "SWF" in S.input_filters_stack:
+            S.filtered_candles = [_ for _ in S.filtered_candles if _.swing_fall]
 
         if len(S.filtered_candles) == len(S.cached_candles):
             return
@@ -574,7 +593,7 @@ class ChainedEntity:
 
             elif key_states[0] == "return":
                 if S.keyboard_input:
-                    S.query_action()
+                    S.query_action(raw_input = True)
                 return
 
 
@@ -635,12 +654,22 @@ class ChainedEntity:
                     risk = S.entry - S.sl
                     reward = risk * 3
                     S.tp = S.entry + reward
+
+                S.select_mode = False
+                S.keyboard_input = ""
+                S.selected_index = -1
+                return
+            
             elif key_states[0] == "s":
                 S.sl = S.idle_coursor
                 if S.entry and S.sl:
                     risk = S.entry - S.sl
                     reward = risk * 3
                     S.tp = S.entry + reward
+                S.select_mode = False
+                S.keyboard_input = ""
+                S.selected_index = -1
+                return
 
     def register_keys(S, keys_reduced, keys_full, time_percent, time_based=False):
         S.time_perce_active = time_percent
@@ -2863,7 +2892,7 @@ class ChainedDrawer:
                         colors.feature_bg,
                         colors.col_active_lighter,
                         sin(line.time_perce_active*(pi*2*3)))),
-                    renderer=S.cyrillic_60,
+                    renderer=S.cyrillic_30,
                 )
             if line.input_filters_stack:
                 place_text(

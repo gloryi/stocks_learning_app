@@ -49,6 +49,9 @@ class simpleCandle:
         S.thick_upper = False  # upper wick taller or lower wick
         S.thick_lower = False  #
 
+        S.swing_rise = False
+        S.swing_fall = False
+
         S.upbreak = False
         S.downbreak = False
         S.no_sooner = index
@@ -427,6 +430,7 @@ class ChainedFeature:
 
     def get_lines_with_offset(S, offset_a, offset_b):
         selected_candles = S.candles[offset_a: offset_a + offset_b]
+        initial_ind = selected_candles[0].index
         special_lines = []
 
         high_low_line = []
@@ -447,6 +451,13 @@ class ChainedFeature:
                             high_low_line[-4].append(2)
                 elif candle.h > high_low_line[-1][1]:
                     high_low_line[-1] = [candle.index, candle.h]
+
+                    if len(high_low_line) >= 2:
+                        for swing_idx in range(high_low_line[-2][0], high_low_line[-1][0] + 1):
+                            selected_candle_idx = swing_idx - initial_ind
+                            if selected_candle_idx < len(S.candles):
+                                S.candles[selected_candle_idx].swing_rise = True
+
                     last_high = True
 
             elif candle.overlow:
@@ -463,6 +474,13 @@ class ChainedFeature:
                             high_low_line[-4].append(2)
                 elif candle.l < high_low_line[-1][1]:
                     high_low_line[-1] = [candle.index, candle.l]
+
+                    if len(high_low_line) >= 2:
+                        for swing_idx in range(high_low_line[-2][0], high_low_line[-1][0] +1):
+                            selected_candle_idx = swing_idx - initial_ind
+                            if selected_candle_idx < len(S.candles):
+                                S.candles[selected_candle_idx].swing_fall = True
+
                     last_high = False
 
         special_lines.append(high_low_line)

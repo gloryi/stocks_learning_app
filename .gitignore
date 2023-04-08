@@ -10,10 +10,12 @@ Knowledge/
 *api_keys.py
 action_affirmations.csv
 results.csv
+profiling.dat
 #not sure about copyright stuff
 #btw made from this cli util castable as non-interactive (arguments-based) subprocess
 #https://github.com/flosse/linuxconsole/blob/master/utils/fftest.c
 controller_features/
+$XDG_STATE_HOME/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

@@ -8,7 +8,7 @@ sets_prefix = os.path.join(os.getcwd(), "learning_sets")
 POSITIVE_TEST = False
 
 TEST = True
-TEST = False
+#TEST = False
 
 def locate_set(_):
     return os.path.join(sets_prefix, _)
