@@ -11,6 +11,7 @@ Knowledge/
 action_affirmations.csv
 results.csv
 profiling.dat
+learning_sets/
 #not sure about copyright stuff
 #btw made from this cli util castable as non-interactive (arguments-based) subprocess
 #https://github.com/flosse/linuxconsole/blob/master/utils/fftest.c
