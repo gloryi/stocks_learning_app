@@ -244,7 +244,7 @@ for time_delta in delta_timer:
         for i, active_screenshot in enumerate(pause_screenshots):
             I = (i - i % 3) // 2
             J = i % 3
-            display_surface.blit(active_screenshot, ((W // 3) * J, (H // 2) * I))
+            #  display_surface.blit(active_screenshot, ((W // 3) * J, (H // 2) * I))
 
         if quadra_timer.is_tick(time_delta):
             if quadra_phase == "INHALE":
@@ -500,7 +500,9 @@ for time_delta in delta_timer:
         tokens_1m = []
         timer_dropped = False
 
-    if new_line_counter.is_tick(time_delta):
+    if new_line_counter.is_tick(time_delta) or active_game.is_dropped():
+        if active_game.is_dropped():
+            new_line_counter.drop_elapsed()
         pyautogui.moveTo(
             SCREEN_X_0 // 2 + W // 64,
             SCREEN_Y_0 + random.randint(H // 2 - H // 3, H // 2 + H // 3),
@@ -508,26 +510,30 @@ for time_delta in delta_timer:
         next_tick_time, meta, meta_minor = active_game.add_line()
         new_line_counter.modify_bpm(next_tick_time)
 
+
+
     if screenshot_timer.is_tick(time_delta):
         if not paused:
 
             if len(pause_screenshots) < 15:
-                pause_screenshots.append(
-                    screenshot_to_image(
-                        pyautogui.screenshot(
-                            region=((SCREEN_X_0 - W) // 2, SCREEN_Y_0, W, H)
-                        )
-                    )
-                )
+                pause_screenshots.append(None)
+            #      pause_screenshots.append(
+            #          screenshot_to_image(
+            #              pyautogui.screenshot(
+            #                  region=((SCREEN_X_0 - W) // 2, SCREEN_Y_0, W, H)
+            #              )
+            #          )
+            #      )
             else:
                 del pause_screenshots[0]
-                pause_screenshots.append(
-                    screenshot_to_image(
-                        pyautogui.screenshot(
-                            region=((SCREEN_X_0 - W) // 2, SCREEN_Y_0, W, H)
-                        )
-                    )
-                )
+                pause_screenshots.append(None)
+            #      pause_screenshots.append(
+            #          screenshot_to_image(
+            #              pyautogui.screenshot(
+            #                  region=((SCREEN_X_0 - W) // 2, SCREEN_Y_0, W, H)
+            #              )
+            #          )
+            #      )
 
             skip_next = True
 

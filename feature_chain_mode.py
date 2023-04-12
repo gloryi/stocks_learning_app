@@ -203,12 +203,15 @@ class ChainedEntity:
         S.entry_activated = None
         S.stop_activated = None
         S.profit_activated = None
+        S.dropped = False
 
         S.cached_candles = None
         S.filtered_candles = []
-        S.avaliable_filters = ["red","grn","vlr","scl","ovh","ovl",
-                                "inn","prc","wpp","wpn","ufw","dfw",
-                                "thu","thl","ubr","dbr","swr","swf"]
+        S.avaliable_filters = ["RED","GRN","VLR","SCL","OVH","OVL",
+                                "INN","PRC","WPP","WPN","UFW","DFW",
+                                "THU","THL","UBR","DBR","SWR","SWF"]
+        S.direction_modifier = random.randint(-3,3)
+
         random.shuffle(S.avaliable_filters)
 
         S.cached_lines = None
@@ -380,6 +383,7 @@ class ChainedEntity:
         return False
 
     def register_answers(S):
+        S.dropped = False
         if S.mode == "QUESTION":
             if not S.burn_mode:
                 is_solved = S.check_sltp_hit()
@@ -489,6 +493,11 @@ class ChainedEntity:
             if S.input_filters_stack:
                 S.input_filters_stack.pop()
 
+        if new_action == "PLC":
+            S.dropped = True
+            S.keyboard_input = ""
+            return
+
         elif new_action == "DROP":
             S.input_filters_stack = []
         else:
@@ -568,7 +577,9 @@ class ChainedEntity:
                 for drop_f in S.filtered_candles:
                     drop_f.label = ""
                 S.select_mode = True
-                S.selected_index = f.index - S.initial_idx
+                S.selected_index = f.index - S.initial_idx + S.direction_modifier
+                S.selected_index = 0 if S.selected_index < 0 else len(S.cached_candles)-1 if S.selected_index >= len(S.cached_candles) else S.selected_index
+                S.direction_modifier = random.randint(-3,3)
                 break
 
 
@@ -588,6 +599,8 @@ class ChainedEntity:
             if key_states[0] == "backspace":
                 if S.keyboard_input:
                     S.keyboard_input = S.keyboard_input[:-1]
+                    return
+                else:
                     return
 
             elif key_states[0] == "return":
@@ -2884,7 +2897,7 @@ class ChainedDrawer:
         if line.mode == "QUESTION" and not line.burn_mode and line.keyboard_mode:
             if line.avaliable_filters:
                 place_text(
-                    " ".join(line.avaliable_filters),
+                    "[" + str(line.direction_modifier) + "]" + " ".join(line.avaliable_filters),
                     W // 2,
                     H // 2 - H//4,
                     base_col = validate_color(interpolate(
@@ -3337,6 +3350,10 @@ class ChainedProcessor:
             S.active_entity.register_mouse(pressed_mouse)
         elif S.active_entity:
             S.active_entity.register_idle_mouse()
+
+    def is_dropped(S):
+        if S.active_entity and S.active_entity.dropped:
+            return True
 
     def tick(S, beat_time, time_elapsed):
 
