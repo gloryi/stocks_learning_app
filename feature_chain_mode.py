@@ -14,6 +14,7 @@ from config import IMAGES_MINOR_DIR, META_ACTION
 from config import HIGHER_TIMEFRAME_SCALE
 from config import META_ACTION_STACK
 from config import TEST, POSITIVE_TEST
+from functools import reduce
 
 # from config import TEST, TEST_WIN_CHANCE
 import colors
@@ -501,8 +502,7 @@ class ChainedEntity:
         elif new_action == "DROP":
             S.input_filters_stack = []
         else:
-            if new_action not in S.input_filters_stack:
-                S.input_filters_stack.append(new_action)
+            S.input_filters_stack.append(new_action)
 
 
         S.filtered_candles = S.cached_candles[::]
@@ -512,42 +512,56 @@ class ChainedEntity:
 
 
 
-        if "RED" in S.input_filters_stack:
-            S.filtered_candles = [_ for _ in S.filtered_candles if _.red]
-        if "GRN" in S.input_filters_stack:
-            S.filtered_candles = [_ for _ in S.filtered_candles if _.green]
-        if "VLR" in S.input_filters_stack:
-            S.filtered_candles = [_ for _ in S.filtered_candles if _.vRising]
-        if "SCL" in S.input_filters_stack:
-            S.filtered_candles = [_ for _ in S.filtered_candles if _.is_same_color]
-        if "OVH" in S.input_filters_stack:
-            S.filtered_candles = [_ for _ in S.filtered_candles if _.overhigh]
-        if "OVL" in S.input_filters_stack:
-            S.filtered_candles = [_ for _ in S.filtered_candles if _.overlow]
-        if "INN" in S.input_filters_stack:
-            S.filtered_candles = [_ for _ in S.filtered_candles if _.inner]
-        if "PRC" in S.input_filters_stack:
-            S.filtered_candles = [_ for _ in S.filtered_candles if _.pierce]
-        if "WPP" in S.input_filters_stack:
-            S.filtered_candles = [_ for _ in S.filtered_candles if _.weak_pierce_prev]
-        if "WPN" in S.input_filters_stack:
-            S.filtered_candles = [_ for _ in S.filtered_candles if _.weak_pierce_next]
-        if "UFW" in S.input_filters_stack:
-            S.filtered_candles = [_ for _ in S.filtered_candles if _.up_from_within]
-        if "DFW" in S.input_filters_stack:
-            S.filtered_candles = [_ for _ in S.filtered_candles if _.down_from_within]
-        if "THU" in S.input_filters_stack:
-            S.filtered_candles = [_ for _ in S.filtered_candles if _.thick_upper]
-        if "THL" in S.input_filters_stack:
-            S.filtered_candles = [_ for _ in S.filtered_candles if _.thick_lower]
-        if "UBR" in S.input_filters_stack:
-            S.filtered_candles = [_ for _ in S.filtered_candles if _.upbreak]
-        if "DBR" in S.input_filters_stack:
-            S.filtered_candles = [_ for _ in S.filtered_candles if _.downbreak]
-        if "SWR" in S.input_filters_stack:
-            S.filtered_candles = [_ for _ in S.filtered_candles if _.swing_rise]
-        if "SWF" in S.input_filters_stack:
-            S.filtered_candles = [_ for _ in S.filtered_candles if _.swing_fall]
+        S.selected_index = f.index - S.initial_idx + S.direction_modifier
+        S.selected_index = 0 if S.selected_index < 0 else len(S.cached_candles)-1 if S.selected_index >= len(S.cached_candles) else S.selected_index
+
+        left_candle = lambda _ : S.cached_candles[_.index-S.initial_idx -1] if (_.index-S.initial_idx -1) > 0 else _
+        right_candle = lambda _ : S.cached_candles[_.index-S.initial_idx +1] if (_.index-S.initial_idx +1) < len(S.cached_candles) else _
+        identity_func = lambda _ : _
+        neg_func = lambda _ : not _
+        zero_modifiers = lambda _ : _
+
+        def apply_filters(label, condition):
+            if label not in S.input_filters_stack:
+                return
+            comm_pos = S.input_filters_stack.index(label)
+            target_funcs = [zero_modifiers]
+            filter_func = identity_func
+            while comm_pos >= 0:
+                comm_pos -= 1
+                if len(S.input_filters_stack[comm_pos]) != 1:
+                    break
+                elif S.input_filters_stack[comm_pos] == "L":
+                    target_funcs.append(left_candle)
+                elif S.input_filters_stack[comm_pos] == "R":
+                    target_funcs.append(right_candle)
+                elif S.input_filters_stack[comm_pos] == "N":
+                    if filter_func == identity_func:
+                        filter_func = neg_func
+                    else:
+                        filter_func = identity_func
+
+            target_funcs = target_funcs[::-1]
+            S.filtered_candles = [_ for _ in S.filtered_candles if filter_func(condition(reduce((lambda x, y : y(x)),target_funcs, _)))]
+
+        apply_filters("RED", lambda _ : _.red)
+        apply_filters("GRN", lambda _ : _.green)
+        apply_filters("VLR", lambda _ : _.vRising)
+        apply_filters("SCL", lambda _ : _.is_same_color)
+        apply_filters("OVH", lambda _ : _.overhigh)
+        apply_filters("OVL", lambda _ : _.overlow)
+        apply_filters("INN", lambda _ : _.inner)
+        apply_filters("PRC", lambda _ : _.pierce)
+        apply_filters("WPP", lambda _ : _.weak_pierce_prev)
+        apply_filters("WPN", lambda _ : _.weak_pierce_next)
+        apply_filters("UFW", lambda _ : _.up_from_within)
+        apply_filters("DFW", lambda _ : _.down_from_within)
+        apply_filters("THU", lambda _ : _.thick_upper)
+        apply_filters("THL", lambda _ : _.thick_lower)
+        apply_filters("UBR", lambda _ : _.upbreak)
+        apply_filters("DBR", lambda _ : _.downbreak)
+        apply_filters("SWR", lambda _ : _.swing_rise)
+        apply_filters("SWF", lambda _ : _.swing_fall)
 
         if len(S.filtered_candles) == len(S.cached_candles):
             return
@@ -579,6 +593,7 @@ class ChainedEntity:
                 S.select_mode = True
                 S.selected_index = f.index - S.initial_idx + S.direction_modifier
                 S.selected_index = 0 if S.selected_index < 0 else len(S.cached_candles)-1 if S.selected_index >= len(S.cached_candles) else S.selected_index
+
                 S.direction_modifier = random.randint(-3,3)
                 break
 
